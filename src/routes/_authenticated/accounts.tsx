@@ -115,13 +115,26 @@ function AccountDialog({ account, onClose }: { account: Partial<Account> | null;
   const [name, setName] = useState(account?.name ?? "");
   const [type, setType] = useState<Account["type"]>((account?.type as Account["type"]) ?? "checking");
   const [start, setStart] = useState(String(account?.starting_balance ?? 0));
+  const [creditLimit, setCreditLimit] = useState(String(account?.credit_limit ?? ""));
+  const [loanPrincipal, setLoanPrincipal] = useState(String(account?.loan_principal ?? ""));
+  const [loanRate, setLoanRate] = useState(String(account?.loan_interest_rate ?? ""));
+  const [loanTerm, setLoanTerm] = useState(String(account?.loan_term_months ?? ""));
   const [busy, setBusy] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
     setBusy(true);
-    const payload = { name, type, starting_balance: Number(start) || 0, user_id: user.id };
+    const payload: any = {
+      name,
+      type,
+      starting_balance: Number(start) || 0,
+      user_id: user.id,
+      credit_limit: type === "credit_card" && creditLimit !== "" ? Number(creditLimit) : null,
+      loan_principal: type === "loan" && loanPrincipal !== "" ? Number(loanPrincipal) : null,
+      loan_interest_rate: type === "loan" && loanRate !== "" ? Number(loanRate) : null,
+      loan_term_months: type === "loan" && loanTerm !== "" ? Number(loanTerm) : null,
+    };
     const { error } = account?.id
       ? await supabase.from("accounts").update(payload).eq("id", account.id)
       : await supabase.from("accounts").insert(payload);
@@ -153,7 +166,37 @@ function AccountDialog({ account, onClose }: { account: Partial<Account> | null;
         <div>
           <Label>Startsaldo (€)</Label>
           <Input type="number" step="0.01" value={start} onChange={(e) => setStart(e.target.value)} />
+          {type === "credit_card" && (
+            <p className="mt-1 text-xs text-muted-foreground">Tipp: aktueller Kartensaldo, meist negativ (Schulden).</p>
+          )}
+          {type === "loan" && (
+            <p className="mt-1 text-xs text-muted-foreground">Tipp: aktuelle Restschuld als negativen Wert eintragen.</p>
+          )}
         </div>
+        {type === "credit_card" && (
+          <div>
+            <Label>Kreditlimit (€)</Label>
+            <Input type="number" step="0.01" value={creditLimit} onChange={(e) => setCreditLimit(e.target.value)} />
+          </div>
+        )}
+        {type === "loan" && (
+          <>
+            <div>
+              <Label>Ursprünglicher Kreditbetrag (€)</Label>
+              <Input type="number" step="0.01" value={loanPrincipal} onChange={(e) => setLoanPrincipal(e.target.value)} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Zinssatz (% p.a.)</Label>
+                <Input type="number" step="0.01" value={loanRate} onChange={(e) => setLoanRate(e.target.value)} />
+              </div>
+              <div>
+                <Label>Laufzeit (Monate)</Label>
+                <Input type="number" step="1" value={loanTerm} onChange={(e) => setLoanTerm(e.target.value)} />
+              </div>
+            </div>
+          </>
+        )}
         <Button type="submit" className="w-full" disabled={busy}>Speichern</Button>
       </form>
     </DialogContent>
