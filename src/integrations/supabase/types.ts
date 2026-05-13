@@ -95,6 +95,54 @@ export type Database = {
         }
         Relationships: []
       }
+      recurring_rules: {
+        Row: {
+          account_id: string
+          active: boolean
+          amount: number
+          category_id: string | null
+          created_at: string
+          frequency: Database["public"]["Enums"]["recurring_frequency"]
+          id: string
+          kind: Database["public"]["Enums"]["transaction_kind"]
+          last_booked_on: string | null
+          next_due_on: string
+          note: string | null
+          start_on: string
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          active?: boolean
+          amount: number
+          category_id?: string | null
+          created_at?: string
+          frequency: Database["public"]["Enums"]["recurring_frequency"]
+          id?: string
+          kind?: Database["public"]["Enums"]["transaction_kind"]
+          last_booked_on?: string | null
+          next_due_on: string
+          note?: string | null
+          start_on?: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          active?: boolean
+          amount?: number
+          category_id?: string | null
+          created_at?: string
+          frequency?: Database["public"]["Enums"]["recurring_frequency"]
+          id?: string
+          kind?: Database["public"]["Enums"]["transaction_kind"]
+          last_booked_on?: string | null
+          next_due_on?: string
+          note?: string | null
+          start_on?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           account_id: string
@@ -178,11 +226,19 @@ export type Database = {
       }
     }
     Functions: {
-      [_ in never]: never
+      advance_date: {
+        Args: {
+          d: string
+          f: Database["public"]["Enums"]["recurring_frequency"]
+        }
+        Returns: string
+      }
+      process_due_recurring: { Args: never; Returns: number }
     }
     Enums: {
       account_type: "checking" | "savings" | "credit_card" | "loan"
       category_kind: "income" | "expense"
+      recurring_frequency: "monthly" | "quarterly" | "yearly"
       transaction_kind: "income" | "expense"
     }
     CompositeTypes: {
@@ -313,6 +369,7 @@ export const Constants = {
     Enums: {
       account_type: ["checking", "savings", "credit_card", "loan"],
       category_kind: ["income", "expense"],
+      recurring_frequency: ["monthly", "quarterly", "yearly"],
       transaction_kind: ["income", "expense"],
     },
   },

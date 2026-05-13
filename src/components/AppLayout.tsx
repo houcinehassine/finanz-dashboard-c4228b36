@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { LayoutDashboard, ArrowLeftRight, Wallet, Tags, Settings, LogOut } from "lucide-react";
+import { LayoutDashboard, ArrowLeftRight, Wallet, Tags, Settings, LogOut, Repeat } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 const nav = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/transactions", label: "Transaktionen", icon: ArrowLeftRight },
+  { to: "/recurring", label: "Wiederkehrend", icon: Repeat },
   { to: "/accounts", label: "Konten", icon: Wallet },
   { to: "/categories", label: "Kategorien", icon: Tags },
   { to: "/settings", label: "Einstellungen", icon: Settings },
@@ -74,7 +75,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       </main>
 
       {/* Mobile bottom nav */}
-      <nav className="fixed bottom-0 left-0 right-0 z-10 grid grid-cols-5 border-t bg-card md:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 z-10 grid grid-cols-6 border-t bg-card md:hidden">
         {nav.map((item) => {
           const active = loc.pathname.startsWith(item.to);
           return (
