@@ -18,7 +18,11 @@ export type Database = {
         Row: {
           archived: boolean
           created_at: string
+          credit_limit: number | null
           id: string
+          loan_interest_rate: number | null
+          loan_principal: number | null
+          loan_term_months: number | null
           name: string
           starting_balance: number
           type: Database["public"]["Enums"]["account_type"]
@@ -27,7 +31,11 @@ export type Database = {
         Insert: {
           archived?: boolean
           created_at?: string
+          credit_limit?: number | null
           id?: string
+          loan_interest_rate?: number | null
+          loan_principal?: number | null
+          loan_term_months?: number | null
           name: string
           starting_balance?: number
           type?: Database["public"]["Enums"]["account_type"]
@@ -36,7 +44,11 @@ export type Database = {
         Update: {
           archived?: boolean
           created_at?: string
+          credit_limit?: number | null
           id?: string
+          loan_interest_rate?: number | null
+          loan_principal?: number | null
+          loan_term_months?: number | null
           name?: string
           starting_balance?: number
           type?: Database["public"]["Enums"]["account_type"]
@@ -208,10 +220,40 @@ export type Database = {
           account_id: string | null
           archived: boolean | null
           balance: number | null
+          credit_limit: number | null
+          loan_interest_rate: number | null
+          loan_principal: number | null
+          loan_term_months: number | null
           name: string | null
           starting_balance: number | null
           type: Database["public"]["Enums"]["account_type"] | null
           user_id: string | null
+        }
+        Insert: {
+          account_id?: string | null
+          archived?: boolean | null
+          balance?: never
+          credit_limit?: number | null
+          loan_interest_rate?: number | null
+          loan_principal?: number | null
+          loan_term_months?: number | null
+          name?: string | null
+          starting_balance?: number | null
+          type?: Database["public"]["Enums"]["account_type"] | null
+          user_id?: string | null
+        }
+        Update: {
+          account_id?: string | null
+          archived?: boolean | null
+          balance?: never
+          credit_limit?: number | null
+          loan_interest_rate?: number | null
+          loan_principal?: number | null
+          loan_term_months?: number | null
+          name?: string | null
+          starting_balance?: number | null
+          type?: Database["public"]["Enums"]["account_type"] | null
+          user_id?: string | null
         }
         Relationships: []
       }
