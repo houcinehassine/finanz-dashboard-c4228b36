@@ -46,7 +46,7 @@ function CategoriesPage() {
               <Plus className="mr-2 h-4 w-4" />Neu
             </Button>
           </DialogTrigger>
-          <CategoryDialog category={editing} onClose={() => { setOpen(false); setEditing(null); qc.invalidateQueries({ queryKey: ["categories"] }); }} />
+          <CategoryDialog key={editing?.id ?? "new"} category={editing} onClose={() => { setOpen(false); setEditing(null); qc.invalidateQueries({ queryKey: ["categories"] }); }} />
         </Dialog>
       </div>
 
