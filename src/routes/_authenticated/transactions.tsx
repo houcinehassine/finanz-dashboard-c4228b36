@@ -11,7 +11,7 @@ import { useAccounts, useCategories, useTransactions, type Transaction } from "@
 import { fmtEUR, fmtDate } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/transactions")({
@@ -29,6 +29,7 @@ function TransactionsPage() {
   });
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Transaction | null>(null);
 
   const accountById = useMemo(() => Object.fromEntries((accounts.data ?? []).map((a) => [a.id, a])), [accounts.data]);
   const catById = useMemo(() => Object.fromEntries((categories.data ?? []).map((c) => [c.id, c])), [categories.data]);
@@ -52,11 +53,11 @@ function TransactionsPage() {
           <h1 className="text-2xl font-bold">Transaktionen</h1>
           <p className="text-sm text-muted-foreground">Einnahmen und Ausgaben</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
           <DialogTrigger asChild>
-            <Button><Plus className="mr-2 h-4 w-4" />Neu</Button>
+            <Button onClick={() => setEditing(null)}><Plus className="mr-2 h-4 w-4" />Neu</Button>
           </DialogTrigger>
-          <TransactionDialog onClose={() => { setOpen(false); refresh(); }} />
+          <TransactionDialog tx={editing} onClose={() => { setOpen(false); setEditing(null); refresh(); }} />
         </Dialog>
       </div>
 
@@ -109,6 +110,7 @@ function TransactionsPage() {
                 <span className={`font-semibold ${t.kind === "income" ? "text-emerald-600" : "text-red-600"}`}>
                   {t.kind === "income" ? "+" : "−"}{fmtEUR(t.amount)}
                 </span>
+                <Button size="icon" variant="ghost" onClick={() => { setEditing(t); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
                 <Button size="icon" variant="ghost" onClick={() => onDelete(t.id)}><Trash2 className="h-4 w-4" /></Button>
               </div>
             </Card>
@@ -122,16 +124,16 @@ function TransactionsPage() {
   );
 }
 
-function TransactionDialog({ onClose }: { onClose: () => void }) {
+function TransactionDialog({ tx, onClose }: { tx: Transaction | null; onClose: () => void }) {
   const { user } = useAuth();
   const accounts = useAccounts();
   const categories = useCategories();
-  const [kind, setKind] = useState<Transaction["kind"]>("expense");
-  const [accountId, setAccountId] = useState<string>("");
-  const [categoryId, setCategoryId] = useState<string>("");
-  const [amount, setAmount] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
-  const [note, setNote] = useState("");
+  const [kind, setKind] = useState<Transaction["kind"]>(tx?.kind ?? "expense");
+  const [accountId, setAccountId] = useState<string>(tx?.account_id ?? "");
+  const [categoryId, setCategoryId] = useState<string>(tx?.category_id ?? "");
+  const [amount, setAmount] = useState(tx ? String(tx.amount) : "");
+  const [date, setDate] = useState(tx?.occurred_on ?? new Date().toISOString().slice(0, 10));
+  const [note, setNote] = useState(tx?.note ?? "");
   const [busy, setBusy] = useState(false);
 
   const filteredCats = (categories.data ?? []).filter((c) => c.kind === kind);
@@ -140,7 +142,7 @@ function TransactionDialog({ onClose }: { onClose: () => void }) {
     e.preventDefault();
     if (!user || !accountId) { toast.error("Bitte Konto wählen"); return; }
     setBusy(true);
-    const { error } = await supabase.from("transactions").insert({
+    const payload = {
       user_id: user.id,
       account_id: accountId,
       category_id: categoryId || null,
@@ -148,7 +150,10 @@ function TransactionDialog({ onClose }: { onClose: () => void }) {
       amount: Number(amount) || 0,
       occurred_on: date,
       note: note || null,
-    });
+    };
+    const { error } = tx?.id
+      ? await supabase.from("transactions").update(payload).eq("id", tx.id)
+      : await supabase.from("transactions").insert(payload);
     setBusy(false);
     if (error) toast.error(error.message);
     else { toast.success("Gespeichert"); onClose(); }
@@ -156,7 +161,7 @@ function TransactionDialog({ onClose }: { onClose: () => void }) {
 
   return (
     <DialogContent>
-      <DialogHeader><DialogTitle>Neue Transaktion</DialogTitle></DialogHeader>
+      <DialogHeader><DialogTitle>{tx?.id ? "Transaktion bearbeiten" : "Neue Transaktion"}</DialogTitle></DialogHeader>
       <form onSubmit={submit} className="space-y-3">
         <div>
           <Label>Typ</Label>
