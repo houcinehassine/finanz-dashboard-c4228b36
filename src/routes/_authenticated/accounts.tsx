@@ -66,7 +66,7 @@ function AccountsPage() {
                 <div className="font-medium">{a.name}</div>
               </div>
               <div className="flex gap-1">
-                <Button size="icon" variant="ghost" onClick={() => { setEditing({ id: a.id, name: a.name, type: a.type, starting_balance: a.starting_balance, archived: a.archived }); setOpen(true); }}>
+                <Button size="icon" variant="ghost" onClick={() => { setEditing(a); setOpen(true); }}>
                   <Pencil className="h-4 w-4" />
                 </Button>
                 <Button size="icon" variant="ghost" onClick={() => onArchive(a.id, a.archived)}>
