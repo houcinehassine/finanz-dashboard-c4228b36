@@ -79,6 +79,25 @@ function AccountsPage() {
             </div>
             <div className={`mt-3 text-xl font-semibold ${a.balance < 0 ? "text-red-600" : ""}`}>{fmtEUR(a.balance)}</div>
             <div className="mt-1 text-xs text-muted-foreground">Startsaldo: {fmtEUR(a.starting_balance)}</div>
+            {a.type === "credit_card" && a.credit_limit != null && (
+              <div className="mt-2 space-y-1">
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>Limit: {fmtEUR(a.credit_limit)}</span>
+                  <span>{Math.round(Math.min(100, Math.max(0, (-Math.min(a.balance, 0) / a.credit_limit) * 100)))}%</span>
+                </div>
+                <div className="h-1.5 w-full overflow-hidden rounded bg-muted">
+                  <div className="h-full bg-primary" style={{ width: `${Math.min(100, Math.max(0, (-Math.min(a.balance, 0) / a.credit_limit) * 100))}%` }} />
+                </div>
+              </div>
+            )}
+            {a.type === "loan" && a.loan_principal != null && (
+              <div className="mt-2 text-xs text-muted-foreground space-y-0.5">
+                <div>Ursprung: {fmtEUR(a.loan_principal)}</div>
+                {a.loan_interest_rate != null && <div>Zins: {a.loan_interest_rate}% p.a.</div>}
+                {a.loan_term_months != null && <div>Laufzeit: {a.loan_term_months} Monate</div>}
+                <div className="font-medium text-foreground">Restschuld: {fmtEUR(Math.max(0, a.loan_principal + a.balance))}</div>
+              </div>
+            )}
           </Card>
         ))}
         {balances.data?.length === 0 && (
