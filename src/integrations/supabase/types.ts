@@ -209,6 +209,7 @@ export type Database = {
           archived: boolean | null
           balance: number | null
           name: string | null
+          starting_balance: number | null
           type: Database["public"]["Enums"]["account_type"] | null
           user_id: string | null
         }
