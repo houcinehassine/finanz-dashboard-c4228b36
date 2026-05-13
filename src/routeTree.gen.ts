@@ -18,6 +18,7 @@ import { Route as AuthenticatedRecurringRouteImport } from './routes/_authentica
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedCategoriesRouteImport } from './routes/_authenticated/categories'
 import { Route as AuthenticatedAccountsRouteImport } from './routes/_authenticated/accounts'
+import { Route as AuthenticatedAccountsAccountIdRouteImport } from './routes/_authenticated/accounts.$accountId'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -64,38 +65,47 @@ const AuthenticatedAccountsRoute = AuthenticatedAccountsRouteImport.update({
   path: '/accounts',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedAccountsAccountIdRoute =
+  AuthenticatedAccountsAccountIdRouteImport.update({
+    id: '/$accountId',
+    path: '/$accountId',
+    getParentRoute: () => AuthenticatedAccountsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
-  '/accounts': typeof AuthenticatedAccountsRoute
+  '/accounts': typeof AuthenticatedAccountsRouteWithChildren
   '/categories': typeof AuthenticatedCategoriesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/recurring': typeof AuthenticatedRecurringRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/transactions': typeof AuthenticatedTransactionsRoute
+  '/accounts/$accountId': typeof AuthenticatedAccountsAccountIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
-  '/accounts': typeof AuthenticatedAccountsRoute
+  '/accounts': typeof AuthenticatedAccountsRouteWithChildren
   '/categories': typeof AuthenticatedCategoriesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/recurring': typeof AuthenticatedRecurringRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/transactions': typeof AuthenticatedTransactionsRoute
+  '/accounts/$accountId': typeof AuthenticatedAccountsAccountIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/login': typeof LoginRoute
-  '/_authenticated/accounts': typeof AuthenticatedAccountsRoute
+  '/_authenticated/accounts': typeof AuthenticatedAccountsRouteWithChildren
   '/_authenticated/categories': typeof AuthenticatedCategoriesRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/recurring': typeof AuthenticatedRecurringRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/transactions': typeof AuthenticatedTransactionsRoute
+  '/_authenticated/accounts/$accountId': typeof AuthenticatedAccountsAccountIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -108,6 +118,7 @@ export interface FileRouteTypes {
     | '/recurring'
     | '/settings'
     | '/transactions'
+    | '/accounts/$accountId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -118,6 +129,7 @@ export interface FileRouteTypes {
     | '/recurring'
     | '/settings'
     | '/transactions'
+    | '/accounts/$accountId'
   id:
     | '__root__'
     | '/'
@@ -129,6 +141,7 @@ export interface FileRouteTypes {
     | '/_authenticated/recurring'
     | '/_authenticated/settings'
     | '/_authenticated/transactions'
+    | '/_authenticated/accounts/$accountId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -202,11 +215,31 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAccountsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/accounts/$accountId': {
+      id: '/_authenticated/accounts/$accountId'
+      path: '/$accountId'
+      fullPath: '/accounts/$accountId'
+      preLoaderRoute: typeof AuthenticatedAccountsAccountIdRouteImport
+      parentRoute: typeof AuthenticatedAccountsRoute
+    }
   }
 }
 
+interface AuthenticatedAccountsRouteChildren {
+  AuthenticatedAccountsAccountIdRoute: typeof AuthenticatedAccountsAccountIdRoute
+}
+
+const AuthenticatedAccountsRouteChildren: AuthenticatedAccountsRouteChildren = {
+  AuthenticatedAccountsAccountIdRoute: AuthenticatedAccountsAccountIdRoute,
+}
+
+const AuthenticatedAccountsRouteWithChildren =
+  AuthenticatedAccountsRoute._addFileChildren(
+    AuthenticatedAccountsRouteChildren,
+  )
+
 interface AuthenticatedRouteChildren {
-  AuthenticatedAccountsRoute: typeof AuthenticatedAccountsRoute
+  AuthenticatedAccountsRoute: typeof AuthenticatedAccountsRouteWithChildren
   AuthenticatedCategoriesRoute: typeof AuthenticatedCategoriesRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedRecurringRoute: typeof AuthenticatedRecurringRoute
@@ -215,7 +248,7 @@ interface AuthenticatedRouteChildren {
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
-  AuthenticatedAccountsRoute: AuthenticatedAccountsRoute,
+  AuthenticatedAccountsRoute: AuthenticatedAccountsRouteWithChildren,
   AuthenticatedCategoriesRoute: AuthenticatedCategoriesRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedRecurringRoute: AuthenticatedRecurringRoute,

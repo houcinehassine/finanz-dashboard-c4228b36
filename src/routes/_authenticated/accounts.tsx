@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
@@ -136,12 +136,12 @@ function AccountGrid({
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {items.map((a) => (
-        <Card key={a.id} className={`p-4 ${a.archived ? "opacity-60" : ""}`}>
+        <Card key={a.id} className={`p-4 transition hover:border-primary/50 ${a.archived ? "opacity-60" : ""}`}>
           <div className="flex items-start justify-between">
-            <div>
+            <Link to="/accounts/$accountId" params={{ accountId: a.id }} className="min-w-0 flex-1">
               <div className="text-xs text-muted-foreground">{accountTypeLabel[a.type]}</div>
-              <div className="font-medium">{a.name}</div>
-            </div>
+              <div className="truncate font-medium hover:underline">{a.name}</div>
+            </Link>
             <div className="flex gap-1">
               <Button size="icon" variant="ghost" onClick={() => onEdit(a)}>
                 <Pencil className="h-4 w-4" />
@@ -154,7 +154,7 @@ function AccountGrid({
               </Button>
             </div>
           </div>
-          <div className={`mt-3 text-xl font-semibold ${a.balance < 0 ? "text-red-600" : ""}`}>{fmtEUR(a.balance)}</div>
+          <Link to="/accounts/$accountId" params={{ accountId: a.id }} className={`mt-3 block text-xl font-semibold ${a.balance < 0 ? "text-red-600" : ""}`}>{fmtEUR(a.balance)}</Link>
           <div className="mt-1 text-xs text-muted-foreground">Startsaldo: {fmtEUR(a.starting_balance)}</div>
           {a.type === "credit_card" && a.credit_limit != null && (
             <div className="mt-2 space-y-1">
