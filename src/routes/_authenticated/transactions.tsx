@@ -124,16 +124,16 @@ function TransactionsPage() {
   );
 }
 
-function TransactionDialog({ onClose }: { onClose: () => void }) {
+function TransactionDialog({ tx, onClose }: { tx: Transaction | null; onClose: () => void }) {
   const { user } = useAuth();
   const accounts = useAccounts();
   const categories = useCategories();
-  const [kind, setKind] = useState<Transaction["kind"]>("expense");
-  const [accountId, setAccountId] = useState<string>("");
-  const [categoryId, setCategoryId] = useState<string>("");
-  const [amount, setAmount] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
-  const [note, setNote] = useState("");
+  const [kind, setKind] = useState<Transaction["kind"]>(tx?.kind ?? "expense");
+  const [accountId, setAccountId] = useState<string>(tx?.account_id ?? "");
+  const [categoryId, setCategoryId] = useState<string>(tx?.category_id ?? "");
+  const [amount, setAmount] = useState(tx ? String(tx.amount) : "");
+  const [date, setDate] = useState(tx?.occurred_on ?? new Date().toISOString().slice(0, 10));
+  const [note, setNote] = useState(tx?.note ?? "");
   const [busy, setBusy] = useState(false);
 
   const filteredCats = (categories.data ?? []).filter((c) => c.kind === kind);
@@ -142,7 +142,7 @@ function TransactionDialog({ onClose }: { onClose: () => void }) {
     e.preventDefault();
     if (!user || !accountId) { toast.error("Bitte Konto wählen"); return; }
     setBusy(true);
-    const { error } = await supabase.from("transactions").insert({
+    const payload = {
       user_id: user.id,
       account_id: accountId,
       category_id: categoryId || null,
@@ -150,7 +150,10 @@ function TransactionDialog({ onClose }: { onClose: () => void }) {
       amount: Number(amount) || 0,
       occurred_on: date,
       note: note || null,
-    });
+    };
+    const { error } = tx?.id
+      ? await supabase.from("transactions").update(payload).eq("id", tx.id)
+      : await supabase.from("transactions").insert(payload);
     setBusy(false);
     if (error) toast.error(error.message);
     else { toast.success("Gespeichert"); onClose(); }
@@ -158,7 +161,7 @@ function TransactionDialog({ onClose }: { onClose: () => void }) {
 
   return (
     <DialogContent>
-      <DialogHeader><DialogTitle>Neue Transaktion</DialogTitle></DialogHeader>
+      <DialogHeader><DialogTitle>{tx?.id ? "Transaktion bearbeiten" : "Neue Transaktion"}</DialogTitle></DialogHeader>
       <form onSubmit={submit} className="space-y-3">
         <div>
           <Label>Typ</Label>
