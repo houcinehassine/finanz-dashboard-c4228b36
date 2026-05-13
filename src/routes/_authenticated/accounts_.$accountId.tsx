@@ -9,7 +9,7 @@ import {
 } from "recharts";
 import { ChevronLeft, Wallet, CreditCard, Landmark, TrendingDown, Activity, Hash } from "lucide-react";
 
-export const Route = createFileRoute("/_authenticated/accounts/$accountId")({
+export const Route = createFileRoute("/_authenticated/accounts_/$accountId")({
   component: AccountDetailPage,
 });
 
