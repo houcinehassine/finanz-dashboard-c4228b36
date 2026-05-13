@@ -53,11 +53,11 @@ function TransactionsPage() {
           <h1 className="text-2xl font-bold">Transaktionen</h1>
           <p className="text-sm text-muted-foreground">Einnahmen und Ausgaben</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
           <DialogTrigger asChild>
-            <Button><Plus className="mr-2 h-4 w-4" />Neu</Button>
+            <Button onClick={() => setEditing(null)}><Plus className="mr-2 h-4 w-4" />Neu</Button>
           </DialogTrigger>
-          <TransactionDialog onClose={() => { setOpen(false); refresh(); }} />
+          <TransactionDialog tx={editing} onClose={() => { setOpen(false); setEditing(null); refresh(); }} />
         </Dialog>
       </div>
 
