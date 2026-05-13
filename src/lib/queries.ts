@@ -8,6 +8,10 @@ export type Account = {
   type: "checking" | "savings" | "credit_card" | "loan";
   starting_balance: number;
   archived: boolean;
+  credit_limit: number | null;
+  loan_principal: number | null;
+  loan_interest_rate: number | null;
+  loan_term_months: number | null;
 };
 
 export type AccountBalance = Account & { balance: number };
@@ -40,10 +44,17 @@ export function useAccounts() {
     queryFn: async (): Promise<Account[]> => {
       const { data, error } = await supabase
         .from("accounts")
-        .select("id,name,type,starting_balance,archived")
+        .select("id,name,type,starting_balance,archived,credit_limit,loan_principal,loan_interest_rate,loan_term_months")
         .order("created_at", { ascending: true });
       if (error) throw error;
-      return (data ?? []).map((a) => ({ ...a, starting_balance: Number(a.starting_balance) }));
+      return (data ?? []).map((a: any) => ({
+        ...a,
+        starting_balance: Number(a.starting_balance),
+        credit_limit: a.credit_limit != null ? Number(a.credit_limit) : null,
+        loan_principal: a.loan_principal != null ? Number(a.loan_principal) : null,
+        loan_interest_rate: a.loan_interest_rate != null ? Number(a.loan_interest_rate) : null,
+        loan_term_months: a.loan_term_months != null ? Number(a.loan_term_months) : null,
+      }));
     },
   });
 }
@@ -56,7 +67,7 @@ export function useAccountBalances() {
     queryFn: async (): Promise<AccountBalance[]> => {
       const { data, error } = await supabase
         .from("account_balances")
-        .select("account_id,name,type,archived,starting_balance,balance");
+        .select("account_id,name,type,archived,starting_balance,balance,credit_limit,loan_principal,loan_interest_rate,loan_term_months");
       if (error) throw error;
       return (data ?? []).map((r: any) => ({
         id: r.account_id,
@@ -65,6 +76,10 @@ export function useAccountBalances() {
         archived: r.archived,
         starting_balance: Number(r.starting_balance),
         balance: Number(r.balance),
+        credit_limit: r.credit_limit != null ? Number(r.credit_limit) : null,
+        loan_principal: r.loan_principal != null ? Number(r.loan_principal) : null,
+        loan_interest_rate: r.loan_interest_rate != null ? Number(r.loan_interest_rate) : null,
+        loan_term_months: r.loan_term_months != null ? Number(r.loan_term_months) : null,
       }));
     },
   });
