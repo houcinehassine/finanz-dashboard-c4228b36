@@ -53,7 +53,7 @@ function AccountsPage() {
           <DialogTrigger asChild>
             <Button onClick={() => setEditing({})}><Plus className="mr-2 h-4 w-4" />Neu</Button>
           </DialogTrigger>
-          <AccountDialog account={editing} onClose={() => { setOpen(false); setEditing(null); refresh(); }} />
+          <AccountDialog key={editing?.id ?? "new"} account={editing} onClose={() => { setOpen(false); setEditing(null); refresh(); }} />
         </Dialog>
       </div>
 
