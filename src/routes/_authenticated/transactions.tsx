@@ -110,6 +110,7 @@ function TransactionsPage() {
                 <span className={`font-semibold ${t.kind === "income" ? "text-emerald-600" : "text-red-600"}`}>
                   {t.kind === "income" ? "+" : "−"}{fmtEUR(t.amount)}
                 </span>
+                <Button size="icon" variant="ghost" onClick={() => { setEditing(t); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
                 <Button size="icon" variant="ghost" onClick={() => onDelete(t.id)}><Trash2 className="h-4 w-4" /></Button>
               </div>
             </Card>
