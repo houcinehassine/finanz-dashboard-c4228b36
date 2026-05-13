@@ -11,7 +11,7 @@ import { useAccounts, useCategories, useTransactions, type Transaction } from "@
 import { fmtEUR, fmtDate } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/transactions")({
