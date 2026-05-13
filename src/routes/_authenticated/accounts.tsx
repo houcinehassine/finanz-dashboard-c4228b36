@@ -7,11 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { useAccountBalances, type Account } from "@/lib/queries";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { useAccountBalances, type Account, type AccountBalance } from "@/lib/queries";
 import { fmtEUR, accountTypeLabel } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { Plus, Pencil, Archive, Trash2 } from "lucide-react";
+import { Plus, Pencil, Archive, Trash2, Wallet, CreditCard, Landmark } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/accounts")({
@@ -23,6 +24,7 @@ function AccountsPage() {
   const qc = useQueryClient();
   const [editing, setEditing] = useState<Partial<Account> | null>(null);
   const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState<"bank" | "credit_card" | "loan">("bank");
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["accounts"] });
@@ -42,70 +44,144 @@ function AccountsPage() {
     else { toast.success("Gelöscht"); refresh(); }
   };
 
+  const all = balances.data ?? [];
+  const bank = all.filter((a) => a.type === "checking" || a.type === "savings");
+  const cards = all.filter((a) => a.type === "credit_card");
+  const loans = all.filter((a) => a.type === "loan");
+
+  const newOf = (t: Account["type"]) => {
+    setEditing({ type: t });
+    setOpen(true);
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Konten</h1>
-          <p className="text-sm text-muted-foreground">Bankkonten, Sparkonten, Kreditkarten und Kredite</p>
-        </div>
-        <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
-          <DialogTrigger asChild>
-            <Button onClick={() => setEditing({})}><Plus className="mr-2 h-4 w-4" />Neu</Button>
-          </DialogTrigger>
-          <AccountDialog key={editing?.id ?? "new"} account={editing} onClose={() => { setOpen(false); setEditing(null); refresh(); }} />
-        </Dialog>
+      <div>
+        <h1 className="text-2xl font-bold">Konten verwalten</h1>
+        <p className="text-sm text-muted-foreground">
+          Bankkonten, Kreditkarten und Kredite – alle Salden werden live aus Transaktionen berechnet.
+        </p>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {(balances.data ?? []).map((a) => (
-          <Card key={a.id} className={`p-4 ${a.archived ? "opacity-60" : ""}`}>
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="text-xs text-muted-foreground">{accountTypeLabel[a.type]}</div>
-                <div className="font-medium">{a.name}</div>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
+        <TabsList className="grid w-full grid-cols-3 sm:w-auto">
+          <TabsTrigger value="bank"><Wallet className="mr-2 h-4 w-4" />Bankkonten</TabsTrigger>
+          <TabsTrigger value="credit_card"><CreditCard className="mr-2 h-4 w-4" />Kreditkarten</TabsTrigger>
+          <TabsTrigger value="loan"><Landmark className="mr-2 h-4 w-4" />Kredite</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="bank" className="mt-4 space-y-4">
+          <SectionHeader
+            title="Bankkonten"
+            desc="Giro- und Sparkonten. Saldo = Startsaldo + Einnahmen − Ausgaben."
+            onNew={() => newOf("checking")}
+          />
+          <AccountGrid items={bank} onEdit={(a) => { setEditing(a); setOpen(true); }} onArchive={onArchive} onDelete={onDelete} emptyHint="Noch keine Bankkonten." />
+        </TabsContent>
+
+        <TabsContent value="credit_card" className="mt-4 space-y-4">
+          <SectionHeader
+            title="Kreditkarten"
+            desc="Ausgaben belasten die Karte (negativer Saldo). Tilgung als Umbuchung vom Girokonto."
+            onNew={() => newOf("credit_card")}
+          />
+          <AccountGrid items={cards} onEdit={(a) => { setEditing(a); setOpen(true); }} onArchive={onArchive} onDelete={onDelete} emptyHint="Noch keine Kreditkarten." />
+        </TabsContent>
+
+        <TabsContent value="loan" className="mt-4 space-y-4">
+          <SectionHeader
+            title="Kredite"
+            desc="Restschuld = Ursprungsbetrag − Summe der Tilgungen (vom Kreditkonto verbuchte Ausgaben)."
+            onNew={() => newOf("loan")}
+          />
+          <AccountGrid items={loans} onEdit={(a) => { setEditing(a); setOpen(true); }} onArchive={onArchive} onDelete={onDelete} emptyHint="Noch keine Kredite." />
+        </TabsContent>
+      </Tabs>
+
+      <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setEditing(null); refresh(); } }}>
+        <AccountDialog key={editing?.id ?? `new-${editing?.type ?? "checking"}`} account={editing} onClose={() => { setOpen(false); setEditing(null); refresh(); }} />
+      </Dialog>
+    </div>
+  );
+}
+
+function SectionHeader({ title, desc, onNew }: { title: string; desc: string; onNew: () => void }) {
+  return (
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <h2 className="text-lg font-semibold">{title}</h2>
+        <p className="text-sm text-muted-foreground">{desc}</p>
+      </div>
+      <Button onClick={onNew}><Plus className="mr-2 h-4 w-4" />Neu</Button>
+    </div>
+  );
+}
+
+function AccountGrid({
+  items,
+  onEdit,
+  onArchive,
+  onDelete,
+  emptyHint,
+}: {
+  items: AccountBalance[];
+  onEdit: (a: AccountBalance) => void;
+  onArchive: (id: string, archived: boolean) => void;
+  onDelete: (id: string) => void;
+  emptyHint: string;
+}) {
+  if (items.length === 0) {
+    return <Card className="p-6 text-center text-sm text-muted-foreground">{emptyHint}</Card>;
+  }
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {items.map((a) => (
+        <Card key={a.id} className={`p-4 ${a.archived ? "opacity-60" : ""}`}>
+          <div className="flex items-start justify-between">
+            <div>
+              <div className="text-xs text-muted-foreground">{accountTypeLabel[a.type]}</div>
+              <div className="font-medium">{a.name}</div>
+            </div>
+            <div className="flex gap-1">
+              <Button size="icon" variant="ghost" onClick={() => onEdit(a)}>
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button size="icon" variant="ghost" onClick={() => onArchive(a.id, a.archived)}>
+                <Archive className="h-4 w-4" />
+              </Button>
+              <Button size="icon" variant="ghost" onClick={() => onDelete(a.id)}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+          <div className={`mt-3 text-xl font-semibold ${a.balance < 0 ? "text-red-600" : ""}`}>{fmtEUR(a.balance)}</div>
+          <div className="mt-1 text-xs text-muted-foreground">Startsaldo: {fmtEUR(a.starting_balance)}</div>
+          {a.type === "credit_card" && a.credit_limit != null && (
+            <div className="mt-2 space-y-1">
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>Limit: {fmtEUR(a.credit_limit)}</span>
+                <span>{Math.round(Math.min(100, Math.max(0, (-Math.min(a.balance, 0) / a.credit_limit) * 100)))}% genutzt</span>
               </div>
-              <div className="flex gap-1">
-                <Button size="icon" variant="ghost" onClick={() => { setEditing(a); setOpen(true); }}>
-                  <Pencil className="h-4 w-4" />
-                </Button>
-                <Button size="icon" variant="ghost" onClick={() => onArchive(a.id, a.archived)}>
-                  <Archive className="h-4 w-4" />
-                </Button>
-                <Button size="icon" variant="ghost" onClick={() => onDelete(a.id)}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+              <div className="h-1.5 w-full overflow-hidden rounded bg-muted">
+                <div className="h-full bg-primary" style={{ width: `${Math.min(100, Math.max(0, (-Math.min(a.balance, 0) / a.credit_limit) * 100))}%` }} />
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Verfügbar: {fmtEUR(Math.max(0, a.credit_limit + Math.min(a.balance, 0)))}
               </div>
             </div>
-            <div className={`mt-3 text-xl font-semibold ${a.balance < 0 ? "text-red-600" : ""}`}>{fmtEUR(a.balance)}</div>
-            <div className="mt-1 text-xs text-muted-foreground">Startsaldo: {fmtEUR(a.starting_balance)}</div>
-            {a.type === "credit_card" && a.credit_limit != null && (
-              <div className="mt-2 space-y-1">
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>Limit: {fmtEUR(a.credit_limit)}</span>
-                  <span>{Math.round(Math.min(100, Math.max(0, (-Math.min(a.balance, 0) / a.credit_limit) * 100)))}%</span>
-                </div>
-                <div className="h-1.5 w-full overflow-hidden rounded bg-muted">
-                  <div className="h-full bg-primary" style={{ width: `${Math.min(100, Math.max(0, (-Math.min(a.balance, 0) / a.credit_limit) * 100))}%` }} />
-                </div>
+          )}
+          {a.type === "loan" && a.loan_principal != null && (
+            <div className="mt-2 space-y-0.5 text-xs text-muted-foreground">
+              <div>Ursprungsbetrag: {fmtEUR(a.loan_principal)}</div>
+              {a.loan_interest_rate != null && <div>Zinssatz: {a.loan_interest_rate}% p.a.</div>}
+              {a.loan_term_months != null && <div>Laufzeit: {a.loan_term_months} Monate</div>}
+              <div className="pt-1 font-medium text-foreground">
+                Restschuld: {fmtEUR(Math.max(0, a.loan_principal + Math.min(a.balance, 0)))}
               </div>
-            )}
-            {a.type === "loan" && a.loan_principal != null && (
-              <div className="mt-2 text-xs text-muted-foreground space-y-0.5">
-                <div>Ursprung: {fmtEUR(a.loan_principal)}</div>
-                {a.loan_interest_rate != null && <div>Zins: {a.loan_interest_rate}% p.a.</div>}
-                {a.loan_term_months != null && <div>Laufzeit: {a.loan_term_months} Monate</div>}
-                <div className="font-medium text-foreground">Restschuld: {fmtEUR(Math.max(0, a.loan_principal + a.balance))}</div>
-              </div>
-            )}
-          </Card>
-        ))}
-        {balances.data?.length === 0 && (
-          <Card className="col-span-full p-6 text-center text-sm text-muted-foreground">
-            Noch keine Konten – Klicke auf „Neu".
-          </Card>
-        )}
-      </div>
+            </div>
+          )}
+        </Card>
+      ))}
     </div>
   );
 }
