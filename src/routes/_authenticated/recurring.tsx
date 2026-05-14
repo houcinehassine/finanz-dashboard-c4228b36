@@ -175,7 +175,7 @@ function RecurringPage() {
               {items.map((r) => {
                 const cat = r.category_id ? catById[r.category_id] : null;
                 const tone = r.kind === "income" ? "text-emerald-500" : "text-red-500";
-                const dom = r.day_of_month ?? Number((r.next_due_on || "").slice(8, 10)) || null;
+                const dom = r.day_of_month ?? (Number((r.next_due_on || "").slice(8, 10)) || null);
                 return (
                   <TableRow key={r.id} className={!r.active ? "opacity-50" : ""}>
                     <TableCell className="font-medium">
