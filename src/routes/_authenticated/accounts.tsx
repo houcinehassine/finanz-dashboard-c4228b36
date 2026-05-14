@@ -209,6 +209,7 @@ function AccountDialog({ account, onClose }: { account: Partial<Account> | null;
     const payload: any = {
       name,
       type,
+      icon: icon || defaultIcon(type),
       starting_balance: Number(start) || 0,
       user_id: user.id,
       credit_limit: type === "credit_card" && creditLimit !== "" ? Number(creditLimit) : null,
