@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth-context";
 export type Account = {
   id: string;
   name: string;
-  type: "checking" | "savings" | "credit_card" | "loan" | "darlehen";
+  type: "checking" | "savings" | "credit_card" | "loan" | "darlehen" | "clearing";
   starting_balance: number;
   archived: boolean;
   icon: string;
@@ -14,6 +14,8 @@ export type Account = {
   loan_interest_rate: number | null;
   loan_term_months: number | null;
   loan_due_on: string | null;
+  is_liquid: boolean;
+  linked_loan_account_id: string | null;
 };
 
 export type AccountBalance = Account & { balance: number };
@@ -48,7 +50,7 @@ export function useAccounts() {
     queryFn: async (): Promise<Account[]> => {
       const { data, error } = await supabase
         .from("accounts")
-        .select("id,name,type,starting_balance,archived,icon,credit_limit,loan_principal,loan_interest_rate,loan_term_months,loan_due_on")
+        .select("id,name,type,starting_balance,archived,icon,credit_limit,loan_principal,loan_interest_rate,loan_term_months,loan_due_on,is_liquid,linked_loan_account_id")
         .order("created_at", { ascending: true });
       if (error) throw error;
       return (data ?? []).map((a: any) => ({
@@ -59,6 +61,8 @@ export function useAccounts() {
         loan_interest_rate: a.loan_interest_rate != null ? Number(a.loan_interest_rate) : null,
         loan_term_months: a.loan_term_months != null ? Number(a.loan_term_months) : null,
         loan_due_on: a.loan_due_on ?? null,
+        is_liquid: a.is_liquid !== false,
+        linked_loan_account_id: a.linked_loan_account_id ?? null,
       }));
     },
   });
@@ -72,7 +76,7 @@ export function useAccountBalances() {
     queryFn: async (): Promise<AccountBalance[]> => {
       const { data, error } = await supabase
         .from("account_balances")
-        .select("account_id,name,type,archived,icon,starting_balance,balance,credit_limit,loan_principal,loan_interest_rate,loan_term_months,loan_due_on");
+        .select("account_id,name,type,archived,icon,starting_balance,balance,credit_limit,loan_principal,loan_interest_rate,loan_term_months,loan_due_on,is_liquid,linked_loan_account_id");
       if (error) throw error;
       return (data ?? []).map((r: any) => ({
         id: r.account_id,
@@ -87,6 +91,8 @@ export function useAccountBalances() {
         loan_interest_rate: r.loan_interest_rate != null ? Number(r.loan_interest_rate) : null,
         loan_term_months: r.loan_term_months != null ? Number(r.loan_term_months) : null,
         loan_due_on: r.loan_due_on ?? null,
+        is_liquid: r.is_liquid !== false,
+        linked_loan_account_id: r.linked_loan_account_id ?? null,
       }));
     },
   });

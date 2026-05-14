@@ -51,9 +51,18 @@ function DashboardPage() {
   const allTxs = useTransactions();
   const cats = useCategories();
 
+  const liquidIds = useMemo(
+    () => new Set((balances.data ?? []).filter((a) => a.is_liquid !== false).map((a) => a.id)),
+    [balances.data],
+  );
+  const liquidTxs = useMemo(
+    () => (txs.data ?? []).filter((t) => liquidIds.has(t.account_id)),
+    [txs.data, liquidIds],
+  );
+
   const monthlyInRange = useMemo(() => {
     const map = new Map<string, { month: string; income: number; expense: number }>();
-    for (const t of txs.data ?? []) {
+    for (const t of liquidTxs) {
       const key = t.occurred_on.slice(0, 7);
       const cur = map.get(key) ?? { month: key, income: 0, expense: 0 };
       if (t.kind === "income") cur.income += Number(t.amount);
@@ -63,21 +72,21 @@ function DashboardPage() {
     return Array.from(map.values())
       .sort((a, b) => a.month.localeCompare(b.month))
       .map((r) => ({ ...r, label: fmtMonth(r.month), net: r.income - r.expense }));
-  }, [txs.data]);
+  }, [liquidTxs]);
 
   const periodTotals = useMemo(() => {
     let income = 0, expense = 0;
-    for (const t of txs.data ?? []) {
+    for (const t of liquidTxs) {
       if (t.kind === "income") income += t.amount;
       else expense += t.amount;
     }
     return { income, expense, net: income - expense };
-  }, [txs.data]);
+  }, [liquidTxs]);
 
   const expenseByCat = useMemo(() => {
-    if (!txs.data || !cats.data) return [];
+    if (!cats.data) return [];
     const map = new Map<string, { name: string; value: number; color: string }>();
-    for (const t of txs.data) {
+    for (const t of liquidTxs) {
       if (t.kind !== "expense") continue;
       const cat = cats.data.find((c) => c.id === t.category_id);
       const key = cat?.id ?? "none";
@@ -86,7 +95,7 @@ function DashboardPage() {
       map.set(key, cur);
     }
     return Array.from(map.values());
-  }, [txs.data, cats.data]);
+  }, [liquidTxs, cats.data]);
 
   const activeAccounts = useMemo(
     () => (balances.data ?? []).filter((a) => !a.archived),

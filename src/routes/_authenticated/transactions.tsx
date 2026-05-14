@@ -283,20 +283,30 @@ function TransactionDialog({ tx, defaultKind, onClose }: { tx: Transaction | nul
   const [busy, setBusy] = useState(false);
 
   const filteredCats = (categories.data ?? []).filter((c) => c.kind === kind);
-  const bankAccounts = (accounts.data ?? []).filter((a) => a.type === "checking" || a.type === "savings");
+  const bankAccounts = (accounts.data ?? []).filter((a) => a.type === "checking" || a.type === "savings" || a.type === "clearing");
   const loanAccounts = (accounts.data ?? []).filter((a) => a.type === "loan" || a.type === "credit_card" || a.type === "darlehen");
   const loanIcon = (t: string) => t === "credit_card" ? "💳" : t === "darlehen" ? "🤝" : "🏦";
   const loanLabel = (t: string) => t === "credit_card" ? "Karte" : t === "darlehen" ? "Darlehen" : "Kredit";
+
+  const selectedAccount = (accounts.data ?? []).find((a) => a.id === accountId);
+  // Auto-link to the clearing account's linked loan when applicable
+  const effectiveAccountIcon = (a: { type: string }) =>
+    a.type === "clearing" ? "⚖️" : a.type === "savings" ? "💰" : "🏦";
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !accountId) { toast.error("Bitte Konto wählen"); return; }
     setBusy(true);
+    // If the chosen account is a clearing account with a linked loan, auto-link it
+    let finalLoan = loanAccountId && loanAccountId !== "none" ? loanAccountId : null;
+    if (!finalLoan && selectedAccount?.type === "clearing" && selectedAccount.linked_loan_account_id) {
+      finalLoan = selectedAccount.linked_loan_account_id;
+    }
     const payload = {
       user_id: user.id,
       account_id: accountId,
       category_id: categoryId || null,
-      loan_account_id: loanAccountId && loanAccountId !== "none" ? loanAccountId : null,
+      loan_account_id: finalLoan,
       kind,
       amount: Number(amount) || 0,
       occurred_on: date,
@@ -325,14 +335,18 @@ function TransactionDialog({ tx, defaultKind, onClose }: { tx: Transaction | nul
           </Select>
         </div>
         <div>
-          <Label>Bankkonto (Pflicht)</Label>
+          <Label>Konto (Pflicht)</Label>
           <Select value={accountId} onValueChange={setAccountId}>
             <SelectTrigger><SelectValue placeholder="Konto wählen" /></SelectTrigger>
             <SelectContent>
-              {bankAccounts.map((a) => <SelectItem key={a.id} value={a.id}>🏦 {a.name}</SelectItem>)}
+              {bankAccounts.map((a) => <SelectItem key={a.id} value={a.id}>{effectiveAccountIcon(a)} {a.name}{a.type === "clearing" ? " (Verrechnung)" : ""}</SelectItem>)}
             </SelectContent>
           </Select>
-          <p className="mt-1 text-xs text-muted-foreground">Geld fließt von / zu diesem Bankkonto.</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {selectedAccount?.type === "clearing"
+              ? "Verrechnungskonto: zählt nicht zur Liquidität, beeinflusst aber den verknüpften Kredit."
+              : "Geld fließt von / zu diesem Bankkonto."}
+          </p>
         </div>
         <div>
           <Label>Kategorie</Label>

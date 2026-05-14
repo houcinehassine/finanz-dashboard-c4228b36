@@ -8,11 +8,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
-import { useAccountBalances, type Account, type AccountBalance } from "@/lib/queries";
+import { useAccountBalances, useAccounts, type Account, type AccountBalance } from "@/lib/queries";
 import { fmtEUR, accountTypeLabel } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { Plus, Pencil, Archive, Trash2, Wallet, CreditCard, Landmark, HandCoins } from "lucide-react";
+import { Plus, Pencil, Archive, Trash2, Wallet, CreditCard, Landmark, HandCoins, Scale } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/accounts")({
@@ -48,6 +48,7 @@ function AccountsPage() {
   const cards = all.filter((a) => a.type === "credit_card");
   const loans = all.filter((a) => a.type === "loan");
   const darlehen = all.filter((a) => a.type === "darlehen");
+  const clearings = all.filter((a) => a.type === "clearing");
 
   const newOf = (t: Account["type"]) => {
     setEditing({ type: t });
@@ -101,6 +102,16 @@ function AccountsPage() {
           onNew={() => newOf("darlehen")}
         />
         <AccountGrid items={darlehen} onEdit={(a) => { setEditing(a); setOpen(true); }} onArchive={onArchive} onDelete={onDelete} emptyHint="Noch keine Darlehen." />
+      </section>
+
+      <section className="space-y-4">
+        <SectionHeader
+          title="Verrechnungskonten"
+          desc="Virtuelles Konto für thesaurierte Zinsen / verrechnete Beträge. Zählt nicht zum verfügbaren Geld (Cashflow), wirkt aber über die Verknüpfung auf den Saldo des Kredits."
+          icon={<Scale className="h-5 w-5 text-primary" />}
+          onNew={() => newOf("clearing")}
+        />
+        <AccountGrid items={clearings} onEdit={(a) => { setEditing(a); setOpen(true); }} onArchive={onArchive} onDelete={onDelete} emptyHint="Noch keine Verrechnungskonten." />
       </section>
 
       <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setEditing(null); refresh(); } }}>
@@ -213,6 +224,7 @@ function AccountGrid({
 
 function AccountDialog({ account, onClose }: { account: Partial<Account> | null; onClose: () => void }) {
   const { user } = useAuth();
+  const accountsQ = useAccounts();
   const [name, setName] = useState(account?.name ?? "");
   const [type, setType] = useState<Account["type"]>((account?.type as Account["type"]) ?? "checking");
   const [start, setStart] = useState(String(account?.starting_balance ?? 0));
@@ -221,10 +233,13 @@ function AccountDialog({ account, onClose }: { account: Partial<Account> | null;
   const [loanRate, setLoanRate] = useState(String(account?.loan_interest_rate ?? ""));
   const [loanTerm, setLoanTerm] = useState(String(account?.loan_term_months ?? ""));
   const [loanDueOn, setLoanDueOn] = useState(account?.loan_due_on ?? "");
+  const [linkedLoan, setLinkedLoan] = useState(account?.linked_loan_account_id ?? "none");
   const defaultIcon = (t: Account["type"]) =>
-    t === "credit_card" ? "💳" : t === "loan" ? "🏛️" : t === "darlehen" ? "🤝" : t === "savings" ? "💰" : "🏦";
+    t === "credit_card" ? "💳" : t === "loan" ? "🏛️" : t === "darlehen" ? "🤝" : t === "savings" ? "💰" : t === "clearing" ? "⚖️" : "🏦";
   const [icon, setIcon] = useState(account?.icon ?? defaultIcon((account?.type as Account["type"]) ?? "checking"));
   const [busy, setBusy] = useState(false);
+
+  const loanTargets = (accountsQ.data ?? []).filter((a) => a.type === "loan" || a.type === "darlehen" || a.type === "credit_card");
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -236,6 +251,8 @@ function AccountDialog({ account, onClose }: { account: Partial<Account> | null;
       icon: icon || defaultIcon(type),
       starting_balance: Number(start) || 0,
       user_id: user.id,
+      is_liquid: type !== "clearing",
+      linked_loan_account_id: type === "clearing" && linkedLoan && linkedLoan !== "none" ? linkedLoan : null,
       credit_limit: type === "credit_card" && creditLimit !== "" ? Number(creditLimit) : null,
       loan_principal: (type === "loan" || type === "darlehen") && loanPrincipal !== "" ? Number(loanPrincipal) : null,
       loan_interest_rate: type === "loan" && loanRate !== "" ? Number(loanRate) : null,
@@ -274,8 +291,14 @@ function AccountDialog({ account, onClose }: { account: Partial<Account> | null;
               <SelectItem value="credit_card">Kreditkarte</SelectItem>
               <SelectItem value="loan">Kredit</SelectItem>
               <SelectItem value="darlehen">Darlehen (zinsfrei)</SelectItem>
+              <SelectItem value="clearing">Verrechnungskonto</SelectItem>
             </SelectContent>
           </Select>
+          {type === "clearing" && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Zählt nicht zur Liquidität. Buchungen können über die Verknüpfung den Saldo eines Kredits beeinflussen (z. B. thesaurierte Zinsen).
+            </p>
+          )}
         </div>
         <div>
           <Label>Startsaldo (€)</Label>
@@ -325,6 +348,23 @@ function AccountDialog({ account, onClose }: { account: Partial<Account> | null;
               <Input type="date" value={loanDueOn} onChange={(e) => setLoanDueOn(e.target.value)} />
             </div>
           </>
+        )}
+        {type === "clearing" && (
+          <div>
+            <Label>Verknüpfter Kredit / Darlehen / Karte</Label>
+            <Select value={linkedLoan} onValueChange={setLinkedLoan}>
+              <SelectTrigger><SelectValue placeholder="Keine Verknüpfung" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Keine</SelectItem>
+                {loanTargets.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Buchungen auf dem Verrechnungskonto werden bei neuen Transaktionen automatisch mit diesem Konto verknüpft.
+            </p>
+          </div>
         )}
         <Button type="submit" className="w-full" disabled={busy}>Speichern</Button>
       </form>

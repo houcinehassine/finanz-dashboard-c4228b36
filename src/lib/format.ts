@@ -13,4 +13,5 @@ export const accountTypeLabel: Record<string, string> = {
   credit_card: "Kreditkarte",
   loan: "Kredit",
   darlehen: "Darlehen",
+  clearing: "Verrechnungskonto",
 };
