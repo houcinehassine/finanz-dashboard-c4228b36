@@ -357,8 +357,9 @@ function TransactionsPage() {
                     {isTransfer ? fmtEUR(Number(t.amount)) : `${t.kind === "expense" ? "−" : "+"}${fmtEUR(Number(t.amount))}`}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button size="icon" variant="ghost" onClick={() => { setEditing(t); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
-                    <Button size="icon" variant="ghost" onClick={() => onDelete(t.id)}><Trash2 className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="ghost" onClick={() => { setEditing(t); setOpen(true); }} title="Bearbeiten"><Pencil className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="ghost" onClick={() => onDuplicate(t)} title="Duplizieren"><Copy className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="ghost" onClick={() => onDelete(t.id)} title="Löschen"><Trash2 className="h-4 w-4" /></Button>
                   </TableCell>
                 </TableRow>
               );
