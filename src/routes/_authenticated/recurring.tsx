@@ -198,17 +198,19 @@ function RecurringPage() {
         {dueItems.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">Keine fälligen Buchungen</p>
         ) : (
-          <div className="mt-3 space-y-2">
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
             {dueItems.map(({ rule: r, date }) => {
               const key = `${r.id}:${date}`;
+              const tone = r.kind === "income" ? "text-emerald-500" : "text-red-500";
               return (
-                <div key={key} className="flex items-center justify-between gap-3 rounded-md border bg-muted/30 px-3 py-2">
+                <div key={key} className="flex flex-col gap-2 rounded-md border bg-muted/30 p-3">
                   <div className="min-w-0">
-                    <div className="truncate font-medium">{r.name || r.note || "Buchung"}</div>
-                    <div className="text-xs text-muted-foreground">Fällig: {fmtDate(date)} · {fmtEUR(r.amount)}</div>
+                    <div className="truncate text-sm font-medium">{r.name || r.note || "Buchung"}</div>
+                    <div className="text-xs text-muted-foreground">{fmtDate(date)}</div>
+                    <div className={`text-sm font-semibold ${tone}`}>{r.kind === "income" ? "+" : "−"}{fmtEUR(r.amount)}</div>
                   </div>
-                  <Button size="sm" onClick={() => onBookOccurrence(r, date)} disabled={bookingKey === key}>
-                    <Zap className="mr-1 h-4 w-4" />Jetzt buchen
+                  <Button size="sm" className="w-full" onClick={() => onBookOccurrence(r, date)} disabled={bookingKey === key}>
+                    <Zap className="mr-1 h-4 w-4" />Buchen
                   </Button>
                 </div>
               );
