@@ -210,6 +210,7 @@ export type Database = {
           loan_account_id: string | null
           note: string | null
           occurred_on: string
+          transfer_to_account_id: string | null
           user_id: string
         }
         Insert: {
@@ -224,6 +225,7 @@ export type Database = {
           loan_account_id?: string | null
           note?: string | null
           occurred_on?: string
+          transfer_to_account_id?: string | null
           user_id: string
         }
         Update: {
@@ -238,6 +240,7 @@ export type Database = {
           loan_account_id?: string | null
           note?: string | null
           occurred_on?: string
+          transfer_to_account_id?: string | null
           user_id?: string
         }
         Relationships: [
@@ -366,7 +369,7 @@ export type Database = {
         | "clearing"
       category_kind: "income" | "expense"
       recurring_frequency: "monthly" | "quarterly" | "yearly"
-      transaction_kind: "income" | "expense"
+      transaction_kind: "income" | "expense" | "transfer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -504,7 +507,7 @@ export const Constants = {
       ],
       category_kind: ["income", "expense"],
       recurring_frequency: ["monthly", "quarterly", "yearly"],
-      transaction_kind: ["income", "expense"],
+      transaction_kind: ["income", "expense", "transfer"],
     },
   },
 } as const

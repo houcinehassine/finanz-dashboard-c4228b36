@@ -28,19 +28,32 @@ function AccountDetailPage() {
     [cats.data],
   );
 
-  const tList = txs.data ?? [];
+  const rawList = txs.data ?? [];
   // Sign convention for this account's balance:
-  // - Bank account (filtered by account_id): income +, expense -
+  // - Bank account (filtered by account_id): income +, expense -, transfer (source) -
   // - Loan-like (filtered by loan_account_id): expense + (Tilgung), income - (Auszahlung)
-  const signFor = (kind: "income" | "expense") =>
-    isLoanLike ? (kind === "expense" ? 1 : -1) : (kind === "income" ? 1 : -1);
+  // Transfers TO this account are handled separately below.
+  const signFor = (t: { kind: "income" | "expense" | "transfer"; account_id: string; transfer_to_account_id: string | null }) => {
+    if (t.kind === "transfer") {
+      if (t.account_id === accountId) return -1; // outgoing
+      if (t.transfer_to_account_id === accountId) return 1; // incoming
+      return 0;
+    }
+    return isLoanLike ? (t.kind === "expense" ? 1 : -1) : (t.kind === "income" ? 1 : -1);
+  };
+  // Include transfers where this account is the destination
+  const allTxs = useTransactions();
+  const tList = useMemo(() => {
+    const inbound = (allTxs.data ?? []).filter((t) => t.kind === "transfer" && t.transfer_to_account_id === accountId && t.account_id !== accountId);
+    return [...rawList, ...inbound].sort((a, b) => b.occurred_on.localeCompare(a.occurred_on));
+  }, [rawList, allTxs.data, accountId]);
 
   // Year stats
   const yearStats = useMemo(() => {
     const now = new Date();
     const yearAgo = new Date(now);
     yearAgo.setMonth(yearAgo.getMonth() - 12);
-    const recent = tList.filter((t) => new Date(t.occurred_on) >= yearAgo);
+    const recent = tList.filter((t) => new Date(t.occurred_on) >= yearAgo && t.kind !== "transfer");
     const expenses = recent.filter((t) => t.kind === "expense");
     const totalExpense = expenses.reduce((s, t) => s + t.amount, 0);
     const months = new Set(recent.map((t) => t.occurred_on.slice(0, 7)));
@@ -61,7 +74,7 @@ function AccountDetailPage() {
     const deltaByMonth = new Map<string, number>();
     for (const t of tList) {
       const k = t.occurred_on.slice(0, 7);
-      deltaByMonth.set(k, (deltaByMonth.get(k) ?? 0) + signFor(t.kind) * t.amount);
+      deltaByMonth.set(k, (deltaByMonth.get(k) ?? 0) + signFor(t) * t.amount);
     }
     const endBal = new Map<string, number>();
     let running = account.balance;

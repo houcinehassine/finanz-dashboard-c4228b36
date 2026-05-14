@@ -35,13 +35,14 @@ export type Transaction = {
   account_id: string;
   category_id: string | null;
   loan_account_id: string | null;
-  kind: "income" | "expense";
+  kind: "income" | "expense" | "transfer";
   amount: number;
   occurred_on: string;
   note: string | null;
   created_at: string;
   interest_amount: number | null;
   is_anyfin: boolean;
+  transfer_to_account_id: string | null;
 };
 
 export function useAccounts() {
@@ -124,7 +125,7 @@ export function useTransactions(filters?: { accountId?: string; loanAccountId?: 
     queryFn: async (): Promise<Transaction[]> => {
       let q = supabase
         .from("transactions")
-        .select("id,account_id,category_id,loan_account_id,kind,amount,occurred_on,note,created_at,interest_amount,is_anyfin")
+        .select("id,account_id,category_id,loan_account_id,kind,amount,occurred_on,note,created_at,interest_amount,is_anyfin,transfer_to_account_id")
         .order("occurred_on", { ascending: false })
         .order("created_at", { ascending: false });
       if (filters?.accountId) q = q.eq("account_id", filters.accountId);
@@ -140,6 +141,7 @@ export function useTransactions(filters?: { accountId?: string; loanAccountId?: 
         amount: Number(t.amount),
         interest_amount: t.interest_amount != null ? Number(t.interest_amount) : null,
         is_anyfin: !!t.is_anyfin,
+        transfer_to_account_id: t.transfer_to_account_id ?? null,
       })) as Transaction[];
     },
   });

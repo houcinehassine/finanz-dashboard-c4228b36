@@ -56,7 +56,7 @@ function DashboardPage() {
     [balances.data],
   );
   const liquidTxs = useMemo(
-    () => (txs.data ?? []).filter((t) => liquidIds.has(t.account_id)),
+    () => (txs.data ?? []).filter((t) => t.kind !== "transfer" && liquidIds.has(t.account_id)),
     [txs.data, liquidIds],
   );
 
@@ -66,7 +66,7 @@ function DashboardPage() {
       const key = t.occurred_on.slice(0, 7);
       const cur = map.get(key) ?? { month: key, income: 0, expense: 0 };
       if (t.kind === "income") cur.income += Number(t.amount);
-      else cur.expense += Number(t.amount);
+      else if (t.kind === "expense") cur.expense += Number(t.amount);
       map.set(key, cur);
     }
     return Array.from(map.values())
@@ -78,7 +78,7 @@ function DashboardPage() {
     let income = 0, expense = 0;
     for (const t of liquidTxs) {
       if (t.kind === "income") income += t.amount;
-      else expense += t.amount;
+      else if (t.kind === "expense") expense += t.amount;
     }
     return { income, expense, net: income - expense };
   }, [liquidTxs]);
@@ -132,12 +132,15 @@ function DashboardPage() {
     if (loans.length === 0 || !allTxs.data) return { keys: [], data: [] };
     const loanIds = new Set(loans.map((l) => l.id));
     const relevant = allTxs.data
-      .filter((t) => loanIds.has(t.account_id) || (t.loan_account_id && loanIds.has(t.loan_account_id)))
+      .filter((t) =>
+        loanIds.has(t.account_id) ||
+        (t.loan_account_id && loanIds.has(t.loan_account_id)) ||
+        (t.kind === "transfer" && t.transfer_to_account_id && loanIds.has(t.transfer_to_account_id))
+      )
       .slice()
       .sort((a, b) => a.occurred_on.localeCompare(b.occurred_on));
     if (relevant.length === 0) return { keys: [], data: [] };
 
-    // Running remaining-debt per loan, snapshotted per month
     const remaining = new Map<string, number>();
     for (const l of loans) remaining.set(l.id, Math.max(0, -l.starting_balance));
 
@@ -152,16 +155,23 @@ function DashboardPage() {
     for (const month of sortedMonths) {
       while (idx < relevant.length && relevant[idx].occurred_on.slice(0, 7) <= month) {
         const t = relevant[idx];
-        // Direct on the loan account
         if (loanIds.has(t.account_id)) {
           const cur = remaining.get(t.account_id) ?? 0;
-          // expense on a loan = increase debt; income on a loan = decrease debt
-          remaining.set(t.account_id, Math.max(0, cur + (t.kind === "expense" ? t.amount : -t.amount)));
+          if (t.kind === "transfer") {
+            // outgoing transfer from loan = increases debt
+            remaining.set(t.account_id, Math.max(0, cur + t.amount));
+          } else {
+            remaining.set(t.account_id, Math.max(0, cur + (t.kind === "expense" ? t.amount : -t.amount)));
+          }
         }
-        // Linked principal payment from another account
         if (t.loan_account_id && loanIds.has(t.loan_account_id)) {
           const cur = remaining.get(t.loan_account_id) ?? 0;
           remaining.set(t.loan_account_id, Math.max(0, cur - t.amount));
+        }
+        if (t.kind === "transfer" && t.transfer_to_account_id && loanIds.has(t.transfer_to_account_id)) {
+          // incoming transfer to loan = principal payment
+          const cur = remaining.get(t.transfer_to_account_id) ?? 0;
+          remaining.set(t.transfer_to_account_id, Math.max(0, cur - t.amount));
         }
         idx++;
       }
