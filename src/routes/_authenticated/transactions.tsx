@@ -30,13 +30,41 @@ function TransactionsPage() {
   const [filterAccount, setFilterAccount] = useState<string>("all");
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [range, setRange] = useState<RangeValue>(DEFAULT_RANGE);
-  const { from, to } = useMemo(() => rangeToFromTo(range), [range]);
+  const now = new Date();
+  const [filterYear, setFilterYear] = useState<string>(String(now.getFullYear()));
+  const [filterMonth, setFilterMonth] = useState<string>(String(now.getMonth() + 1));
+  const { from, to } = useMemo(() => {
+    if (filterYear !== "all") {
+      const y = Number(filterYear);
+      if (filterMonth !== "all") {
+        const m = Number(filterMonth);
+        const last = new Date(y, m, 0).getDate();
+        const pad = (n: number) => (n < 10 ? `0${n}` : String(n));
+        return { from: `${y}-${pad(m)}-01`, to: `${y}-${pad(m)}-${pad(last)}` };
+      }
+      return { from: `${y}-01-01`, to: `${y}-12-31` };
+    }
+    if (filterMonth !== "all") {
+      const m = Number(filterMonth);
+      const y = now.getFullYear();
+      const last = new Date(y, m, 0).getDate();
+      const pad = (n: number) => (n < 10 ? `0${n}` : String(n));
+      return { from: `${y}-${pad(m)}-01`, to: `${y}-${pad(m)}-${pad(last)}` };
+    }
+    return rangeToFromTo(range);
+  }, [range, filterYear, filterMonth]);
+  const ymActive = filterYear !== "all" || filterMonth !== "all";
   const txs = useTransactions({
     accountId: filterAccount === "all" ? undefined : filterAccount,
     categoryId: filterCategory === "all" ? undefined : filterCategory,
     from,
     to,
   });
+  const YEARS = useMemo(() => {
+    const cy = now.getFullYear();
+    return Array.from({ length: 11 }, (_, i) => cy - 8 + i);
+  }, []);
+  const MONTHS_DE = ["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(null);
