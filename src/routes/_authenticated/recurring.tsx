@@ -323,7 +323,8 @@ function RecurringPage() {
             </TableBody>
           </Table>
         </Card>
-      )}
+        );
+      })()}
     </div>
   );
 }
