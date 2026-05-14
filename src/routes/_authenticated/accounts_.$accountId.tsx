@@ -158,7 +158,10 @@ function AccountDetailPage() {
 
       {/* Chart */}
       <Card className="p-4">
-        <div className="mb-3 text-[11px] uppercase tracking-wider text-muted-foreground">Saldo-Verlauf</div>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Saldo-Verlauf</div>
+          <DateRangePicker value={range} onChange={setRange} />
+        </div>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={series}>
