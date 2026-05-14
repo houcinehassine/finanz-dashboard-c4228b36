@@ -26,7 +26,7 @@ type ViewKind = "all" | "expense" | "income";
 function TransactionsPage() {
   const accounts = useAccounts();
   const categories = useCategories();
-  const [view, setView] = useState<ViewKind>("expense");
+  const [view, setView] = useState<ViewKind>("all");
   const [filterAccount, setFilterAccount] = useState<string>("all");
   const [range, setRange] = useState<RangeValue>(DEFAULT_RANGE);
   const { from, to } = useMemo(() => rangeToFromTo(range), [range]);
