@@ -134,10 +134,15 @@ function AccountGrid({
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {items.map((a) => (
         <Card key={a.id} className={`p-4 transition hover:border-primary/50 ${a.archived ? "opacity-60" : ""}`}>
-          <div className="flex items-start justify-between">
-            <Link to="/accounts/$accountId" params={{ accountId: a.id }} className="min-w-0 flex-1">
-              <div className="text-xs text-muted-foreground">{accountTypeLabel[a.type]}</div>
-              <div className="truncate font-medium hover:underline">{a.name}</div>
+          <div className="flex items-start justify-between gap-2">
+            <Link to="/accounts/$accountId" params={{ accountId: a.id }} className="flex min-w-0 flex-1 items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-xl">
+                {a.icon || "🏦"}
+              </span>
+              <div className="min-w-0">
+                <div className="text-xs text-muted-foreground">{accountTypeLabel[a.type]}</div>
+                <div className="truncate font-medium hover:underline">{a.name}</div>
+              </div>
             </Link>
             <div className="flex gap-1">
               <Button size="icon" variant="ghost" onClick={() => onEdit(a)}>
@@ -192,6 +197,9 @@ function AccountDialog({ account, onClose }: { account: Partial<Account> | null;
   const [loanPrincipal, setLoanPrincipal] = useState(String(account?.loan_principal ?? ""));
   const [loanRate, setLoanRate] = useState(String(account?.loan_interest_rate ?? ""));
   const [loanTerm, setLoanTerm] = useState(String(account?.loan_term_months ?? ""));
+  const defaultIcon = (t: Account["type"]) =>
+    t === "credit_card" ? "💳" : t === "loan" ? "🏛️" : t === "savings" ? "💰" : "🏦";
+  const [icon, setIcon] = useState(account?.icon ?? defaultIcon((account?.type as Account["type"]) ?? "checking"));
   const [busy, setBusy] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
@@ -201,6 +209,7 @@ function AccountDialog({ account, onClose }: { account: Partial<Account> | null;
     const payload: any = {
       name,
       type,
+      icon: icon || defaultIcon(type),
       starting_balance: Number(start) || 0,
       user_id: user.id,
       credit_limit: type === "credit_card" && creditLimit !== "" ? Number(creditLimit) : null,
@@ -220,9 +229,15 @@ function AccountDialog({ account, onClose }: { account: Partial<Account> | null;
     <DialogContent>
       <DialogHeader><DialogTitle>{account?.id ? "Konto bearbeiten" : "Neues Konto"}</DialogTitle></DialogHeader>
       <form onSubmit={submit} className="space-y-3">
-        <div>
-          <Label>Name</Label>
-          <Input required value={name} onChange={(e) => setName(e.target.value)} />
+        <div className="grid grid-cols-[80px_1fr] gap-3">
+          <div>
+            <Label>Emoji</Label>
+            <Input value={icon} onChange={(e) => setIcon(e.target.value)} maxLength={4} className="text-center text-xl" />
+          </div>
+          <div>
+            <Label>Name</Label>
+            <Input required value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
         </div>
         <div>
           <Label>Typ</Label>

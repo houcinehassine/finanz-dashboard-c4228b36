@@ -26,38 +26,36 @@ export function AppLayout({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-muted/20">
       {/* Top nav */}
       <header className="sticky top-0 z-20 border-b bg-card">
-        <div className="flex h-14 items-center gap-4 px-4 md:px-6">
+        <div className="flex h-14 items-center justify-between px-4 md:px-6">
           <div className="flex items-center gap-2">
             <Wallet className="h-5 w-5 text-primary" />
             <span className="font-semibold">Finanzmanager</span>
           </div>
-          <nav className="hidden flex-1 items-center gap-1 md:flex">
-            {nav.map((item) => {
-              const active = loc.pathname.startsWith(item.to);
-              return (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  className={cn(
-                    "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
-                    active
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                  )}
-                >
-                  <item.icon className="h-4 w-4" />
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
-          <div className="ml-auto">
-            <Button variant="ghost" size="sm" onClick={handleLogout}>
-              <LogOut className="h-4 w-4 md:mr-2" />
-              <span className="hidden md:inline">Abmelden</span>
-            </Button>
-          </div>
+          <Button variant="ghost" size="sm" onClick={handleLogout}>
+            <LogOut className="h-4 w-4 md:mr-2" />
+            <span className="hidden md:inline">Abmelden</span>
+          </Button>
         </div>
+        <nav className="hidden border-t md:flex md:items-center md:justify-center md:gap-1 md:px-4 md:py-2">
+          {nav.map((item) => {
+            const active = loc.pathname.startsWith(item.to);
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                className={cn(
+                  "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
+                  active
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                )}
+              >
+                <item.icon className="h-4 w-4" />
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
       </header>
 
       {/* Content */}
