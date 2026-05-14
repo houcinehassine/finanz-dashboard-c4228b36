@@ -14,25 +14,6 @@ import { Plus, Pencil, Trash2, Lock } from "lucide-react";
 import { toast } from "sonner";
 
 // Names seeded by the public.handle_new_user() trigger – treated as system categories
-const SYSTEM_NAMES = new Set([
-  "Lohn",
-  "Abonnement",
-  "Allgemein",
-  "Freizeit",
-  "Geschenke",
-  "Gesundheit",
-  "Kredit",
-  "Lebensmittel",
-  "Leihen privat",
-  "Miete",
-  "Nebenkosten",
-  "Raten",
-  "Rundfunkbeitrag",
-  "Sonstiges",
-  "Sparen",
-  "Transport",
-  "Versicherung",
-]);
 
 export function CategoriesManager() {
   const cats = useCategories();
