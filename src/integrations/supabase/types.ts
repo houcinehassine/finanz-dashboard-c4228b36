@@ -21,6 +21,7 @@ export type Database = {
           credit_limit: number | null
           icon: string
           id: string
+          loan_due_on: string | null
           loan_interest_rate: number | null
           loan_principal: number | null
           loan_term_months: number | null
@@ -35,6 +36,7 @@ export type Database = {
           credit_limit?: number | null
           icon?: string
           id?: string
+          loan_due_on?: string | null
           loan_interest_rate?: number | null
           loan_principal?: number | null
           loan_term_months?: number | null
@@ -49,6 +51,7 @@ export type Database = {
           credit_limit?: number | null
           icon?: string
           id?: string
+          loan_due_on?: string | null
           loan_interest_rate?: number | null
           loan_principal?: number | null
           loan_term_months?: number | null
@@ -263,6 +266,7 @@ export type Database = {
           balance: number | null
           credit_limit: number | null
           icon: string | null
+          loan_due_on: string | null
           loan_interest_rate: number | null
           loan_principal: number | null
           loan_term_months: number | null
