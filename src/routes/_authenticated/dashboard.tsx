@@ -51,6 +51,15 @@ function DashboardPage() {
   const allTxs = useTransactions();
   const cats = useCategories();
 
+  const liquidIds = useMemo(
+    () => new Set((balances.data ?? []).filter((a) => a.is_liquid !== false).map((a) => a.id)),
+    [balances.data],
+  );
+  const liquidTxs = useMemo(
+    () => (txs.data ?? []).filter((t) => liquidIds.has(t.account_id)),
+    [txs.data, liquidIds],
+  );
+
   const monthlyInRange = useMemo(() => {
     const map = new Map<string, { month: string; income: number; expense: number }>();
     for (const t of txs.data ?? []) {
