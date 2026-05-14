@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAccountBalances, useTransactions, useCategories } from "@/lib/queries";
@@ -8,6 +8,7 @@ import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from "recharts";
 import { ChevronLeft, Wallet, CreditCard, Landmark, TrendingDown, Activity, Hash } from "lucide-react";
+import { DateRangePicker, DEFAULT_RANGE, rangeToFromTo, type RangeValue } from "@/components/DateRangePicker";
 
 export const Route = createFileRoute("/_authenticated/accounts_/$accountId")({
   component: AccountDetailPage,
