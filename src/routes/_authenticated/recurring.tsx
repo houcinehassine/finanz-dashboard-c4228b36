@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useAccounts, useCategories } from "@/lib/queries";
@@ -26,6 +27,7 @@ type RecurringRule = {
   id: string;
   account_id: string;
   category_id: string | null;
+  loan_account_id: string | null;
   kind: Kind;
   amount: number;
   note: string | null;
@@ -67,8 +69,8 @@ function RecurringPage() {
   const [open, setOpen] = useState(false);
   const [processing, setProcessing] = useState(false);
 
-  const accountById = Object.fromEntries((accounts.data ?? []).map((a) => [a.id, a]));
-  const catById = Object.fromEntries((categories.data ?? []).map((c) => [c.id, c]));
+  const accountById = useMemo(() => Object.fromEntries((accounts.data ?? []).map((a) => [a.id, a])), [accounts.data]);
+  const catById = useMemo(() => Object.fromEntries((categories.data ?? []).map((c) => [c.id, c])), [categories.data]);
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["recurring_rules"] });
@@ -102,12 +104,15 @@ function RecurringPage() {
     else refresh();
   };
 
+  const items = rules.data ?? [];
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Wiederkehrende Buchungen</h1>
-          <p className="text-sm text-muted-foreground">Abos, Mieten, Gehälter — automatisch verbucht</p>
+          <div className="text-xs uppercase tracking-widest text-muted-foreground">Automatisch</div>
+          <h1 className="text-3xl font-bold">Wiederkehrende Buchungen</h1>
+          <p className="text-sm text-muted-foreground">Abos, Mieten, Gehälter, Kreditraten — automatisch verbucht</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={runDue} disabled={processing}>
@@ -122,47 +127,67 @@ function RecurringPage() {
         </div>
       </div>
 
-      <div className="space-y-2">
-        {(rules.data ?? []).map((r) => {
-          const cat = r.category_id ? catById[r.category_id] : null;
-          const acc = accountById[r.account_id];
-          return (
-            <Card key={r.id} className={`flex flex-wrap items-center justify-between gap-3 p-3 ${!r.active ? "opacity-60" : ""}`}>
-              <div className="flex items-center gap-3">
-                <div
-                  className="flex h-10 w-10 items-center justify-center rounded-md text-lg"
-                  style={{ backgroundColor: `${cat?.color ?? "#94a3b8"}20` }}
-                >
-                  {cat?.icon ?? <Repeat className="h-4 w-4" />}
-                </div>
-                <div>
-                  <div className="font-medium">{cat?.name ?? "Ohne Kategorie"}{r.note ? ` · ${r.note}` : ""}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {acc?.name ?? "—"} · {freqLabel[r.frequency]} · nächster: {fmtDate(r.next_due_on)}
+      {items.length === 0 ? (
+        <Card className="p-8 text-center text-sm text-muted-foreground">
+          Noch keine wiederkehrenden Buchungen. Lege z.B. Miete, Netflix, Gehalt oder eine Kreditrate an.
+        </Card>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {items.map((r) => {
+            const cat = r.category_id ? catById[r.category_id] : null;
+            const acc = accountById[r.account_id];
+            const loan = r.loan_account_id ? accountById[r.loan_account_id] : null;
+            const tone = r.kind === "income" ? "text-emerald-500" : "text-red-500";
+            return (
+              <Card key={r.id} className={`p-4 transition hover:border-primary/50 ${!r.active ? "opacity-60" : ""}`}>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-lg"
+                      style={{ backgroundColor: `${cat?.color ?? "#94a3b8"}20` }}
+                    >
+                      {cat?.icon ?? <Repeat className="h-4 w-4" />}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-xs text-muted-foreground">{freqLabel[r.frequency]}</div>
+                      <div className="truncate font-medium">{r.note || cat?.name || "Ohne Kategorie"}</div>
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 gap-1">
+                    <Button size="icon" variant="ghost" onClick={() => { setEditing(r); setOpen(true); }}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button size="icon" variant="ghost" onClick={() => onDelete(r.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className={`font-semibold ${r.kind === "income" ? "text-emerald-600" : "text-red-600"}`}>
+
+                <div className={`mt-3 text-xl font-semibold ${tone}`}>
                   {r.kind === "income" ? "+" : "−"}{fmtEUR(r.amount)}
-                </span>
-                <Switch checked={r.active} onCheckedChange={() => onToggleActive(r.id, r.active)} />
-                <Button size="icon" variant="ghost" onClick={() => { setEditing(r); setOpen(true); }}>
-                  <Pencil className="h-4 w-4" />
-                </Button>
-                <Button size="icon" variant="ghost" onClick={() => onDelete(r.id)}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </Card>
-          );
-        })}
-        {rules.data?.length === 0 && (
-          <Card className="p-6 text-center text-sm text-muted-foreground">
-            Noch keine wiederkehrenden Buchungen. Lege z.B. Miete, Netflix oder Gehalt an.
-          </Card>
-        )}
-      </div>
+                </div>
+
+                <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                  {cat && <div>Kategorie: <span className="text-foreground">{cat.name}</span></div>}
+                  {acc && <div>Konto: <span className="text-foreground">{acc.name}</span></div>}
+                  <div>Nächste Fälligkeit: <span className="text-foreground">{fmtDate(r.next_due_on)}</span></div>
+                </div>
+
+                {loan && (
+                  <Badge variant="outline" className="mt-2">
+                    {loan.type === "credit_card" ? "💳 Karte" : "🏦 Kredit"}: {loan.name}
+                  </Badge>
+                )}
+
+                <div className="mt-3 flex items-center justify-between border-t pt-3">
+                  <span className="text-xs text-muted-foreground">{r.active ? "Aktiv" : "Pausiert"}</span>
+                  <Switch checked={r.active} onCheckedChange={() => onToggleActive(r.id, r.active)} />
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -179,9 +204,11 @@ function RuleDialog({ rule, onClose }: { rule: Partial<RecurringRule> | null; on
   const [frequency, setFrequency] = useState<Frequency>((rule?.frequency as Frequency) ?? "monthly");
   const [startOn, setStartOn] = useState(rule?.start_on ?? new Date().toISOString().slice(0, 10));
   const [nextDue, setNextDue] = useState(rule?.next_due_on ?? new Date().toISOString().slice(0, 10));
+  const [loanAccountId, setLoanAccountId] = useState<string>(rule?.loan_account_id ?? "none");
   const [busy, setBusy] = useState(false);
 
   const filteredCats = (categories.data ?? []).filter((c) => c.kind === kind);
+  const loanAccounts = (accounts.data ?? []).filter((a) => a.type === "loan" || a.type === "credit_card");
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -191,6 +218,7 @@ function RuleDialog({ rule, onClose }: { rule: Partial<RecurringRule> | null; on
       user_id: user.id,
       account_id: accountId,
       category_id: categoryId || null,
+      loan_account_id: loanAccountId && loanAccountId !== "none" ? loanAccountId : null,
       kind,
       amount: Number(amount) || 0,
       note: note || null,
@@ -257,7 +285,7 @@ function RuleDialog({ rule, onClose }: { rule: Partial<RecurringRule> | null; on
             <Input type="number" step="0.01" min="0" required value={amount} onChange={(e) => setAmount(e.target.value)} />
           </div>
           <div>
-            <Label>Notiz</Label>
+            <Label>Beschreibung</Label>
             <Input value={note ?? ""} onChange={(e) => setNote(e.target.value)} placeholder="z.B. Netflix" />
           </div>
         </div>
@@ -270,6 +298,25 @@ function RuleDialog({ rule, onClose }: { rule: Partial<RecurringRule> | null; on
             <Label>Nächste Fälligkeit</Label>
             <Input type="date" required value={nextDue} onChange={(e) => setNextDue(e.target.value)} />
           </div>
+        </div>
+        <div>
+          <Label>Verknüpfter Kredit / Kreditkarte (optional)</Label>
+          <Select value={loanAccountId} onValueChange={setLoanAccountId}>
+            <SelectTrigger><SelectValue placeholder="Keiner" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Keiner</SelectItem>
+              {loanAccounts.map((a) => (
+                <SelectItem key={a.id} value={a.id}>
+                  {a.type === "credit_card" ? "💳" : "🏦"} {a.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {kind === "income"
+              ? "Z.B. wenn diese Einnahme eine wiederkehrende Kreditauszahlung ist."
+              : "Z.B. wenn diese Ausgabe eine monatliche Kreditrate oder Kreditkarten-Zahlung ist."}
+          </p>
         </div>
         <Button type="submit" className="w-full" disabled={busy}>Speichern</Button>
       </form>
