@@ -242,11 +242,24 @@ function RecurringPage() {
         )}
       </Card>
 
-      {items.length === 0 ? (
-        <Card className="p-8 text-center text-sm text-muted-foreground">
-          Noch keine wiederkehrenden Buchungen. Lege z.B. Miete, Netflix, Gehalt oder eine Kreditrate an.
-        </Card>
-      ) : (
+      <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
+        <TabsList>
+          <TabsTrigger value="expense">Ausgaben ({items.filter((r) => !r.archived && r.kind === "expense").length})</TabsTrigger>
+          <TabsTrigger value="income">Einnahmen ({items.filter((r) => !r.archived && r.kind === "income").length})</TabsTrigger>
+          <TabsTrigger value="archived">Archiv ({items.filter((r) => r.archived).length})</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
+      {(() => {
+        const filtered = items.filter((r) => tab === "archived" ? r.archived : !r.archived && r.kind === tab);
+        if (filtered.length === 0) {
+          return (
+            <Card className="p-8 text-center text-sm text-muted-foreground">
+              {tab === "archived" ? "Keine archivierten Buchungen." : "Keine Einträge in dieser Kategorie."}
+            </Card>
+          );
+        }
+        return (
         <Card className="overflow-hidden">
           <Table>
             <TableHeader>
@@ -254,19 +267,21 @@ function RecurringPage() {
                 <TableHead>Name</TableHead>
                 <TableHead>Kategorie</TableHead>
                 <TableHead>Rhythmus</TableHead>
-                <TableHead>Tag im Monat</TableHead>
+                <TableHead>Tag</TableHead>
+                <TableHead>Start</TableHead>
+                <TableHead>Ende</TableHead>
                 <TableHead>Verknüpft mit</TableHead>
                 <TableHead className="text-right">Betrag</TableHead>
                 <TableHead className="text-right">Aktionen</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {items.map((r) => {
+              {filtered.map((r) => {
                 const cat = r.category_id ? catById[r.category_id] : null;
                 const tone = r.kind === "income" ? "text-emerald-500" : "text-red-500";
                 const dom = r.day_of_month ?? (Number((r.next_due_on || "").slice(8, 10)) || null);
                 return (
-                  <TableRow key={r.id} className={!r.active ? "opacity-50" : ""}>
+                  <TableRow key={r.id} className={(!r.active || r.archived) ? "opacity-50" : ""}>
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
                         <Repeat className="h-4 w-4 text-muted-foreground" />
@@ -278,17 +293,24 @@ function RecurringPage() {
                     </TableCell>
                     <TableCell className="text-muted-foreground">{freqLabel[r.frequency]}</TableCell>
                     <TableCell className="text-muted-foreground">{dom ? `${dom}.` : "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">{r.start_on ? fmtDate(r.start_on) : "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">{r.end_on ? fmtDate(r.end_on) : "—"}</TableCell>
                     <TableCell className="text-muted-foreground">{linkedLabel(r)}</TableCell>
                     <TableCell className={`text-right font-semibold ${tone}`}>
                       {r.kind === "income" ? "+" : "−"}{fmtEUR(r.amount)}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center justify-end gap-1">
-                        <Button size="icon" variant="ghost" title="Jetzt buchen" onClick={() => onBookNow(r.id)} disabled={bookingKey === `now:${r.id}`}>
-                          <Zap className="h-4 w-4 text-emerald-500" />
-                        </Button>
+                        {!r.archived && (
+                          <Button size="icon" variant="ghost" title="Jetzt buchen" onClick={() => onBookNow(r.id)} disabled={bookingKey === `now:${r.id}`}>
+                            <Zap className="h-4 w-4 text-emerald-500" />
+                          </Button>
+                        )}
                         <Button size="icon" variant="ghost" title="Bearbeiten" onClick={() => { setEditing(r); setOpen(true); }}>
                           <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" title={r.archived ? "Wiederherstellen" : "Archivieren"} onClick={() => onToggleArchive(r)}>
+                          {r.archived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
                         </Button>
                         <Button size="icon" variant="ghost" title="Löschen" onClick={() => onDelete(r.id)}>
                           <Trash2 className="h-4 w-4" />
