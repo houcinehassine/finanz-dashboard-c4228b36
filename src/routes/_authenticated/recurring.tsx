@@ -76,6 +76,7 @@ function RecurringPage() {
   const [editing, setEditing] = useState<Partial<RecurringRule> | null>(null);
   const [open, setOpen] = useState(false);
   const [bookingKey, setBookingKey] = useState<string | null>(null);
+  const [tab, setTab] = useState<"expense" | "income" | "archived">("expense");
 
   const accountById = useMemo(() => Object.fromEntries((accounts.data ?? []).map((a) => [a.id, a])), [accounts.data]);
   const catById = useMemo(() => Object.fromEntries((categories.data ?? []).map((c) => [c.id, c])), [categories.data]);
