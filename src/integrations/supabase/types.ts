@@ -262,6 +262,7 @@ export type Database = {
           archived: boolean | null
           balance: number | null
           credit_limit: number | null
+          icon: string | null
           loan_interest_rate: number | null
           loan_principal: number | null
           loan_term_months: number | null
@@ -269,32 +270,6 @@ export type Database = {
           starting_balance: number | null
           type: Database["public"]["Enums"]["account_type"] | null
           user_id: string | null
-        }
-        Insert: {
-          account_id?: string | null
-          archived?: boolean | null
-          balance?: never
-          credit_limit?: number | null
-          loan_interest_rate?: number | null
-          loan_principal?: number | null
-          loan_term_months?: number | null
-          name?: string | null
-          starting_balance?: number | null
-          type?: Database["public"]["Enums"]["account_type"] | null
-          user_id?: string | null
-        }
-        Update: {
-          account_id?: string | null
-          archived?: boolean | null
-          balance?: never
-          credit_limit?: number | null
-          loan_interest_rate?: number | null
-          loan_principal?: number | null
-          loan_term_months?: number | null
-          name?: string | null
-          starting_balance?: number | null
-          type?: Database["public"]["Enums"]["account_type"] | null
-          user_id?: string | null
         }
         Relationships: []
       }
