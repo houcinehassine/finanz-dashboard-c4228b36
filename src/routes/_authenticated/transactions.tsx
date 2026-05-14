@@ -28,10 +28,12 @@ function TransactionsPage() {
   const categories = useCategories();
   const [view, setView] = useState<ViewKind>("all");
   const [filterAccount, setFilterAccount] = useState<string>("all");
+  const [filterCategory, setFilterCategory] = useState<string>("all");
   const [range, setRange] = useState<RangeValue>(DEFAULT_RANGE);
   const { from, to } = useMemo(() => rangeToFromTo(range), [range]);
   const txs = useTransactions({
     accountId: filterAccount === "all" ? undefined : filterAccount,
+    categoryId: filterCategory === "all" ? undefined : filterCategory,
     from,
     to,
   });
@@ -94,6 +96,15 @@ function TransactionsPage() {
             <SelectContent>
               <SelectItem value="all">Alle Konten</SelectItem>
               {(accounts.data ?? []).map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={filterCategory} onValueChange={setFilterCategory}>
+            <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Alle Kategorien</SelectItem>
+              {(categories.data ?? [])
+                .filter((c) => view === "all" || c.kind === view)
+                .map((c) => <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>)}
             </SelectContent>
           </Select>
           <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
