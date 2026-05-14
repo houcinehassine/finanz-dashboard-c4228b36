@@ -259,7 +259,7 @@ function RecurringPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center justify-end gap-1">
-                        <Button size="icon" variant="ghost" title="Jetzt buchen" onClick={() => onBookNow(r.id)} disabled={bookingId === r.id}>
+                        <Button size="icon" variant="ghost" title="Jetzt buchen" onClick={() => onBookNow(r.id)} disabled={bookingKey === `now:${r.id}`}>
                           <Zap className="h-4 w-4 text-emerald-500" />
                         </Button>
                         <Button size="icon" variant="ghost" title="Bearbeiten" onClick={() => { setEditing(r); setOpen(true); }}>
