@@ -48,6 +48,11 @@ function DashboardPage() {
     return Array.from(map.values());
   }, [txs.data, cats.data]);
 
+  const creditCards = useMemo(
+    () => (balances.data ?? []).filter((a) => !a.archived && a.type === "credit_card"),
+    [balances.data],
+  );
+
   const totalBalance = (balances.data ?? []).filter((a) => !a.archived).reduce((s, a) => s + a.balance, 0);
   const periodLabel = rangeLabel(range);
 
