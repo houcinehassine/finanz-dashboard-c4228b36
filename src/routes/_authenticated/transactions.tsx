@@ -107,14 +107,22 @@ function TransactionsPage() {
 
       <DateRangePicker value={range} onChange={setRange} />
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card className="p-5">
-          <div className="text-xs uppercase tracking-widest text-muted-foreground">{title}</div>
-          <div className={`mt-2 text-3xl font-bold ${amountTone}`}>{fmtEUR(total)}</div>
+          <div className="text-xs uppercase tracking-widest text-muted-foreground">Einnahmen</div>
+          <div className="mt-2 text-2xl font-bold text-emerald-500">{fmtEUR(totals.income)}</div>
+        </Card>
+        <Card className="p-5">
+          <div className="text-xs uppercase tracking-widest text-muted-foreground">Ausgaben</div>
+          <div className="mt-2 text-2xl font-bold text-red-500">{fmtEUR(totals.expense)}</div>
+        </Card>
+        <Card className="p-5">
+          <div className="text-xs uppercase tracking-widest text-muted-foreground">Netto</div>
+          <div className={`mt-2 text-2xl font-bold ${totals.net < 0 ? "text-red-500" : "text-emerald-500"}`}>{fmtEUR(totals.net)}</div>
         </Card>
         <Card className="p-5">
           <div className="text-xs uppercase tracking-widest text-muted-foreground">Anzahl</div>
-          <div className="mt-2 text-3xl font-bold">{filtered.length}</div>
+          <div className="mt-2 text-2xl font-bold">{filtered.length}</div>
         </Card>
       </div>
 
