@@ -99,12 +99,15 @@ function AccountsPage() {
   );
 }
 
-function SectionHeader({ title, desc, onNew }: { title: string; desc: string; onNew: () => void }) {
+function SectionHeader({ title, desc, icon, onNew }: { title: string; desc: string; icon?: React.ReactNode; onNew: () => void }) {
   return (
-    <div className="flex flex-wrap items-start justify-between gap-3">
-      <div>
-        <h2 className="text-lg font-semibold">{title}</h2>
-        <p className="text-sm text-muted-foreground">{desc}</p>
+    <div className="flex flex-wrap items-start justify-between gap-3 border-b pb-3">
+      <div className="flex items-start gap-3">
+        {icon}
+        <div>
+          <h2 className="text-lg font-semibold">{title}</h2>
+          <p className="text-sm text-muted-foreground">{desc}</p>
+        </div>
       </div>
       <Button onClick={onNew}><Plus className="mr-2 h-4 w-4" />Neu</Button>
     </div>
