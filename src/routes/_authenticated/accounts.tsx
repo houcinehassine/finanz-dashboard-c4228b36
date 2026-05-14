@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+
 import { useAccountBalances, type Account, type AccountBalance } from "@/lib/queries";
 import { fmtEUR, accountTypeLabel } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,7 +24,6 @@ function AccountsPage() {
   const qc = useQueryClient();
   const [editing, setEditing] = useState<Partial<Account> | null>(null);
   const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState<"bank" | "credit_card" | "loan">("bank");
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["accounts"] });
@@ -63,40 +62,35 @@ function AccountsPage() {
         </p>
       </div>
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
-        <TabsList className="grid w-full grid-cols-3 sm:w-auto">
-          <TabsTrigger value="bank"><Wallet className="mr-2 h-4 w-4" />Bankkonten</TabsTrigger>
-          <TabsTrigger value="credit_card"><CreditCard className="mr-2 h-4 w-4" />Kreditkarten</TabsTrigger>
-          <TabsTrigger value="loan"><Landmark className="mr-2 h-4 w-4" />Kredite</TabsTrigger>
-        </TabsList>
+      <section className="space-y-4">
+        <SectionHeader
+          title="Bankkonten"
+          desc="Giro- und Sparkonten. Saldo = Startsaldo + Einnahmen − Ausgaben."
+          icon={<Wallet className="h-5 w-5 text-primary" />}
+          onNew={() => newOf("checking")}
+        />
+        <AccountGrid items={bank} onEdit={(a) => { setEditing(a); setOpen(true); }} onArchive={onArchive} onDelete={onDelete} emptyHint="Noch keine Bankkonten." />
+      </section>
 
-        <TabsContent value="bank" className="mt-4 space-y-4">
-          <SectionHeader
-            title="Bankkonten"
-            desc="Giro- und Sparkonten. Saldo = Startsaldo + Einnahmen − Ausgaben."
-            onNew={() => newOf("checking")}
-          />
-          <AccountGrid items={bank} onEdit={(a) => { setEditing(a); setOpen(true); }} onArchive={onArchive} onDelete={onDelete} emptyHint="Noch keine Bankkonten." />
-        </TabsContent>
+      <section className="space-y-4">
+        <SectionHeader
+          title="Kreditkarten"
+          desc="Ausgaben belasten die Karte (negativer Saldo). Tilgung als Umbuchung vom Girokonto."
+          icon={<CreditCard className="h-5 w-5 text-primary" />}
+          onNew={() => newOf("credit_card")}
+        />
+        <AccountGrid items={cards} onEdit={(a) => { setEditing(a); setOpen(true); }} onArchive={onArchive} onDelete={onDelete} emptyHint="Noch keine Kreditkarten." />
+      </section>
 
-        <TabsContent value="credit_card" className="mt-4 space-y-4">
-          <SectionHeader
-            title="Kreditkarten"
-            desc="Ausgaben belasten die Karte (negativer Saldo). Tilgung als Umbuchung vom Girokonto."
-            onNew={() => newOf("credit_card")}
-          />
-          <AccountGrid items={cards} onEdit={(a) => { setEditing(a); setOpen(true); }} onArchive={onArchive} onDelete={onDelete} emptyHint="Noch keine Kreditkarten." />
-        </TabsContent>
-
-        <TabsContent value="loan" className="mt-4 space-y-4">
-          <SectionHeader
-            title="Kredite"
-            desc="Restschuld = Ursprungsbetrag − Summe der Tilgungen (vom Kreditkonto verbuchte Ausgaben)."
-            onNew={() => newOf("loan")}
-          />
-          <AccountGrid items={loans} onEdit={(a) => { setEditing(a); setOpen(true); }} onArchive={onArchive} onDelete={onDelete} emptyHint="Noch keine Kredite." />
-        </TabsContent>
-      </Tabs>
+      <section className="space-y-4">
+        <SectionHeader
+          title="Kredite"
+          desc="Restschuld = Ursprungsbetrag − Summe der Tilgungen (vom Kreditkonto verbuchte Ausgaben)."
+          icon={<Landmark className="h-5 w-5 text-primary" />}
+          onNew={() => newOf("loan")}
+        />
+        <AccountGrid items={loans} onEdit={(a) => { setEditing(a); setOpen(true); }} onArchive={onArchive} onDelete={onDelete} emptyHint="Noch keine Kredite." />
+      </section>
 
       <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setEditing(null); refresh(); } }}>
         <AccountDialog key={editing?.id ?? `new-${editing?.type ?? "checking"}`} account={editing} onClose={() => { setOpen(false); setEditing(null); refresh(); }} />
@@ -105,12 +99,15 @@ function AccountsPage() {
   );
 }
 
-function SectionHeader({ title, desc, onNew }: { title: string; desc: string; onNew: () => void }) {
+function SectionHeader({ title, desc, icon, onNew }: { title: string; desc: string; icon?: React.ReactNode; onNew: () => void }) {
   return (
-    <div className="flex flex-wrap items-start justify-between gap-3">
-      <div>
-        <h2 className="text-lg font-semibold">{title}</h2>
-        <p className="text-sm text-muted-foreground">{desc}</p>
+    <div className="flex flex-wrap items-start justify-between gap-3 border-b pb-3">
+      <div className="flex items-start gap-3">
+        {icon}
+        <div>
+          <h2 className="text-lg font-semibold">{title}</h2>
+          <p className="text-sm text-muted-foreground">{desc}</p>
+        </div>
       </div>
       <Button onClick={onNew}><Plus className="mr-2 h-4 w-4" />Neu</Button>
     </div>

@@ -60,8 +60,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      {/* Content full width */}
-      <main className="w-full px-4 pb-24 pt-4 md:px-6 md:pb-8">{children}</main>
+      {/* Content */}
+      <main className="pb-24 md:pb-8">
+        <div className="mx-auto max-w-6xl p-4 md:p-6">{children}</div>
+      </main>
 
       {/* Mobile bottom nav */}
       <nav className="fixed bottom-0 left-0 right-0 z-10 grid grid-cols-5 border-t bg-card md:hidden">
