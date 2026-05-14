@@ -224,6 +224,7 @@ function AccountGrid({
 
 function AccountDialog({ account, onClose }: { account: Partial<Account> | null; onClose: () => void }) {
   const { user } = useAuth();
+  const accountsQ = useAccounts();
   const [name, setName] = useState(account?.name ?? "");
   const [type, setType] = useState<Account["type"]>((account?.type as Account["type"]) ?? "checking");
   const [start, setStart] = useState(String(account?.starting_balance ?? 0));
@@ -232,10 +233,13 @@ function AccountDialog({ account, onClose }: { account: Partial<Account> | null;
   const [loanRate, setLoanRate] = useState(String(account?.loan_interest_rate ?? ""));
   const [loanTerm, setLoanTerm] = useState(String(account?.loan_term_months ?? ""));
   const [loanDueOn, setLoanDueOn] = useState(account?.loan_due_on ?? "");
+  const [linkedLoan, setLinkedLoan] = useState(account?.linked_loan_account_id ?? "none");
   const defaultIcon = (t: Account["type"]) =>
-    t === "credit_card" ? "💳" : t === "loan" ? "🏛️" : t === "darlehen" ? "🤝" : t === "savings" ? "💰" : "🏦";
+    t === "credit_card" ? "💳" : t === "loan" ? "🏛️" : t === "darlehen" ? "🤝" : t === "savings" ? "💰" : t === "clearing" ? "⚖️" : "🏦";
   const [icon, setIcon] = useState(account?.icon ?? defaultIcon((account?.type as Account["type"]) ?? "checking"));
   const [busy, setBusy] = useState(false);
+
+  const loanTargets = (accountsQ.data ?? []).filter((a) => a.type === "loan" || a.type === "darlehen" || a.type === "credit_card");
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -247,6 +251,8 @@ function AccountDialog({ account, onClose }: { account: Partial<Account> | null;
       icon: icon || defaultIcon(type),
       starting_balance: Number(start) || 0,
       user_id: user.id,
+      is_liquid: type !== "clearing",
+      linked_loan_account_id: type === "clearing" && linkedLoan && linkedLoan !== "none" ? linkedLoan : null,
       credit_limit: type === "credit_card" && creditLimit !== "" ? Number(creditLimit) : null,
       loan_principal: (type === "loan" || type === "darlehen") && loanPrincipal !== "" ? Number(loanPrincipal) : null,
       loan_interest_rate: type === "loan" && loanRate !== "" ? Number(loanRate) : null,
@@ -285,8 +291,14 @@ function AccountDialog({ account, onClose }: { account: Partial<Account> | null;
               <SelectItem value="credit_card">Kreditkarte</SelectItem>
               <SelectItem value="loan">Kredit</SelectItem>
               <SelectItem value="darlehen">Darlehen (zinsfrei)</SelectItem>
+              <SelectItem value="clearing">Verrechnungskonto</SelectItem>
             </SelectContent>
           </Select>
+          {type === "clearing" && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Zählt nicht zur Liquidität. Buchungen können über die Verknüpfung den Saldo eines Kredits beeinflussen (z. B. thesaurierte Zinsen).
+            </p>
+          )}
         </div>
         <div>
           <Label>Startsaldo (€)</Label>
@@ -336,6 +348,23 @@ function AccountDialog({ account, onClose }: { account: Partial<Account> | null;
               <Input type="date" value={loanDueOn} onChange={(e) => setLoanDueOn(e.target.value)} />
             </div>
           </>
+        )}
+        {type === "clearing" && (
+          <div>
+            <Label>Verknüpfter Kredit / Darlehen / Karte</Label>
+            <Select value={linkedLoan} onValueChange={setLinkedLoan}>
+              <SelectTrigger><SelectValue placeholder="Keine Verknüpfung" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Keine</SelectItem>
+                {loanTargets.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Buchungen auf dem Verrechnungskonto werden bei neuen Transaktionen automatisch mit diesem Konto verknüpft.
+            </p>
+          </div>
         )}
         <Button type="submit" className="w-full" disabled={busy}>Speichern</Button>
       </form>
