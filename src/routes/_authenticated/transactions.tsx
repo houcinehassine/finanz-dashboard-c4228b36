@@ -175,8 +175,8 @@ function TransactionsPage() {
                       {!acc && !loan && "—"}
                     </div>
                   </TableCell>
-                  <TableCell className={`text-right font-semibold ${amountTone}`}>
-                    {isExpense ? "−" : "+"}{fmtEUR(Number(t.amount))}
+                  <TableCell className={`text-right font-semibold ${t.kind === "expense" ? "text-red-500" : "text-emerald-500"}`}>
+                    {t.kind === "expense" ? "−" : "+"}{fmtEUR(Number(t.amount))}
                   </TableCell>
                   <TableCell className="text-right">
                     <Button size="icon" variant="ghost" onClick={() => { setEditing(t); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
