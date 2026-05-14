@@ -14,25 +14,6 @@ import { Plus, Pencil, Trash2, Lock } from "lucide-react";
 import { toast } from "sonner";
 
 // Names seeded by the public.handle_new_user() trigger – treated as system categories
-const SYSTEM_NAMES = new Set([
-  "Lohn",
-  "Abonnement",
-  "Allgemein",
-  "Freizeit",
-  "Geschenke",
-  "Gesundheit",
-  "Kredit",
-  "Lebensmittel",
-  "Leihen privat",
-  "Miete",
-  "Nebenkosten",
-  "Raten",
-  "Rundfunkbeitrag",
-  "Sonstiges",
-  "Sparen",
-  "Transport",
-  "Versicherung",
-]);
 
 export function CategoriesManager() {
   const cats = useCategories();
@@ -56,8 +37,8 @@ export function CategoriesManager() {
   };
 
   const all = cats.data ?? [];
-  const own = all.filter((c) => !SYSTEM_NAMES.has(c.name));
-  const system = all.filter((c) => SYSTEM_NAMES.has(c.name));
+  const own = all.filter((c) => !c.is_system);
+  const system = all.filter((c) => c.is_system);
 
   return (
     <div className="space-y-6">
