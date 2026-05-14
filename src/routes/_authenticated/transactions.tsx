@@ -151,7 +151,7 @@ function TransactionsPage() {
         </div>
         <div className="flex items-center gap-2">
           <Select value={view} onValueChange={(v) => setView(v as ViewKind)}>
-            <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-auto min-w-[7rem] gap-2"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Alle</SelectItem>
               <SelectItem value="expense">Ausgaben</SelectItem>
@@ -160,14 +160,14 @@ function TransactionsPage() {
             </SelectContent>
           </Select>
           <Select value={filterAccount} onValueChange={setFilterAccount}>
-            <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-auto min-w-[7rem] gap-2"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Alle Konten</SelectItem>
               {(accounts.data ?? []).map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={filterCategory} onValueChange={setFilterCategory}>
-            <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-auto min-w-[7rem] gap-2"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Alle Kategorien</SelectItem>
               {(categories.data ?? [])
@@ -176,14 +176,14 @@ function TransactionsPage() {
             </SelectContent>
           </Select>
           <Select value={filterMonth} onValueChange={setFilterMonth}>
-            <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-auto min-w-[7rem] gap-2"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Alle Monate</SelectItem>
               {MONTHS_DE.map((m, i) => <SelectItem key={m} value={String(i + 1)}>{m}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={filterYear} onValueChange={setFilterYear}>
-            <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-auto min-w-[7rem] gap-2"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Alle Jahre</SelectItem>
               {YEARS.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
