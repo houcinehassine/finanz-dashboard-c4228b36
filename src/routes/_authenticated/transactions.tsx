@@ -151,18 +151,18 @@ function TransactionsPage() {
         <Card className="space-y-3 p-3">
           <div className="text-sm text-muted-foreground">Monat / Jahr</div>
           <div className="flex flex-wrap items-center gap-2">
-            <Select value={filterYear} onValueChange={setFilterYear}>
-              <SelectTrigger className="h-9 w-28"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Alle Jahre</SelectItem>
-                {YEARS.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
-              </SelectContent>
-            </Select>
             <Select value={filterMonth} onValueChange={setFilterMonth}>
               <SelectTrigger className="h-9 w-36"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Alle Monate</SelectItem>
                 {MONTHS_DE.map((m, i) => <SelectItem key={m} value={String(i + 1)}>{m}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={filterYear} onValueChange={setFilterYear}>
+              <SelectTrigger className="h-9 w-28"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Alle Jahre</SelectItem>
+                {YEARS.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
               </SelectContent>
             </Select>
             {ymActive && (
