@@ -89,3 +89,34 @@ function SettingsPage() {
     </div>
   );
 }
+
+function AppearanceCard() {
+  const { theme, setTheme, lang, setLang, t } = usePreferences();
+  return (
+    <>
+      <Card className="p-5">
+        <h2 className="mb-3 text-sm font-semibold">{t("settings_appearance")}</h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm text-muted-foreground">{t("settings_theme")}:</span>
+          <Button variant={theme === "light" ? "default" : "outline"} size="sm" onClick={() => setTheme("light")}>
+            <Sun className="mr-2 h-4 w-4" /> {t("theme_light")}
+          </Button>
+          <Button variant={theme === "dark" ? "default" : "outline"} size="sm" onClick={() => setTheme("dark")}>
+            <Moon className="mr-2 h-4 w-4" /> {t("theme_dark")}
+          </Button>
+        </div>
+      </Card>
+      <Card className="p-5">
+        <h2 className="mb-3 text-sm font-semibold">{t("settings_language")}</h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant={lang === "de" ? "default" : "outline"} size="sm" onClick={() => setLang("de")}>
+            🇩🇪 {t("lang_de")}
+          </Button>
+          <Button variant={lang === "en" ? "default" : "outline"} size="sm" onClick={() => setLang("en")}>
+            🇬🇧 {t("lang_en")}
+          </Button>
+        </div>
+      </Card>
+    </>
+  );
+}
