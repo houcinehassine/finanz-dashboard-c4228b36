@@ -1,19 +1,23 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { useAccountBalances, useMonthlySummary, useTransactions, useCategories } from "@/lib/queries";
 import { fmtEUR, fmtMonth, accountTypeLabel } from "@/lib/format";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { TrendingUp, TrendingDown, Wallet } from "lucide-react";
+import { DateRangePicker, DEFAULT_RANGE, rangeLabel, rangeToFromTo, type RangeValue } from "@/components/DateRangePicker";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: DashboardPage,
 });
 
 function DashboardPage() {
+  const [range, setRange] = useState<RangeValue>(DEFAULT_RANGE);
+  const { from, to } = useMemo(() => rangeToFromTo(range), [range]);
+
   const balances = useAccountBalances();
   const monthly = useMonthlySummary();
-  const txs = useTransactions();
+  const txs = useTransactions({ from, to });
   const cats = useCategories();
 
   const last6 = useMemo(() => {
@@ -21,20 +25,20 @@ function DashboardPage() {
     return m.slice(-6).map((r) => ({ ...r, label: fmtMonth(r.month) }));
   }, [monthly.data]);
 
-  const currentMonth = useMemo(() => {
-    const now = new Date();
-    const key = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-    return (monthly.data ?? []).find((r) => r.month.startsWith(key));
-  }, [monthly.data]);
+  const periodTotals = useMemo(() => {
+    let income = 0, expense = 0;
+    for (const t of txs.data ?? []) {
+      if (t.kind === "income") income += t.amount;
+      else expense += t.amount;
+    }
+    return { income, expense, net: income - expense };
+  }, [txs.data]);
 
   const expenseByCat = useMemo(() => {
     if (!txs.data || !cats.data) return [];
-    const now = new Date();
     const map = new Map<string, { name: string; value: number; color: string }>();
     for (const t of txs.data) {
       if (t.kind !== "expense") continue;
-      const d = new Date(t.occurred_on);
-      if (d.getMonth() !== now.getMonth() || d.getFullYear() !== now.getFullYear()) continue;
       const cat = cats.data.find((c) => c.id === t.category_id);
       const key = cat?.id ?? "none";
       const cur = map.get(key) ?? { name: cat?.name ?? "Ohne Kategorie", value: 0, color: cat?.color ?? "#94a3b8" };
@@ -45,6 +49,7 @@ function DashboardPage() {
   }, [txs.data, cats.data]);
 
   const totalBalance = (balances.data ?? []).filter((a) => !a.archived).reduce((s, a) => s + a.balance, 0);
+  const periodLabel = rangeLabel(range);
 
   return (
     <div className="space-y-6">
@@ -52,6 +57,8 @@ function DashboardPage() {
         <h1 className="text-2xl font-bold">Dashboard</h1>
         <p className="text-sm text-muted-foreground">Übersicht über deine Finanzen</p>
       </div>
+
+      <DateRangePicker value={range} onChange={setRange} />
 
       {/* KPIs */}
       <div className="grid gap-3 sm:grid-cols-3">
@@ -63,15 +70,15 @@ function DashboardPage() {
         </Card>
         <Card className="p-4">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <TrendingUp className="h-4 w-4" /> Einnahmen (Monat)
+            <TrendingUp className="h-4 w-4" /> Einnahmen ({periodLabel})
           </div>
-          <div className="mt-1 text-2xl font-bold text-emerald-600">{fmtEUR(currentMonth?.income ?? 0)}</div>
+          <div className="mt-1 text-2xl font-bold text-emerald-600">{fmtEUR(periodTotals.income)}</div>
         </Card>
         <Card className="p-4">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <TrendingDown className="h-4 w-4" /> Ausgaben (Monat)
+            <TrendingDown className="h-4 w-4" /> Ausgaben ({periodLabel})
           </div>
-          <div className="mt-1 text-2xl font-bold text-red-600">{fmtEUR(currentMonth?.expense ?? 0)}</div>
+          <div className="mt-1 text-2xl font-bold text-red-600">{fmtEUR(periodTotals.expense)}</div>
         </Card>
       </div>
 
