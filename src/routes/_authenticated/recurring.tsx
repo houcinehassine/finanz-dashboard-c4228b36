@@ -205,14 +205,17 @@ function RecurringPage() {
           <p className="mt-3 text-sm text-muted-foreground">Keine fälligen Buchungen</p>
         ) : (
           <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-            {dueItems.map(({ rule: r, date }) => {
+            {dueItems.map(({ rule: r, date, count }) => {
               const key = `${r.id}:${date}`;
               const tone = r.kind === "income" ? "text-emerald-500" : "text-red-500";
               return (
-                <div key={key} className="flex flex-col gap-2 rounded-md border bg-muted/30 p-3">
+                <div key={r.id} className="flex flex-col gap-2 rounded-md border bg-muted/30 p-3">
                   <div className="min-w-0">
-                    <div className="truncate text-sm font-medium">{r.name || r.note || "Buchung"}</div>
-                    <div className="text-xs text-muted-foreground">{fmtDate(date)}</div>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="truncate text-sm font-medium">{r.name || r.note || "Buchung"}</div>
+                      {count > 1 && <Badge variant="secondary" className="shrink-0">×{count}</Badge>}
+                    </div>
+                    <div className="text-xs text-muted-foreground">letzte: {fmtDate(date)}</div>
                     <div className={`text-sm font-semibold ${tone}`}>{r.kind === "income" ? "+" : "−"}{fmtEUR(r.amount)}</div>
                   </div>
                   <Button size="sm" className="w-full" onClick={() => onBookOccurrence(r, date)} disabled={bookingKey === key}>
