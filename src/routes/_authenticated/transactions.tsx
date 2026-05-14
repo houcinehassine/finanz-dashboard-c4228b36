@@ -283,10 +283,15 @@ function TransactionDialog({ tx, defaultKind, onClose }: { tx: Transaction | nul
   const [busy, setBusy] = useState(false);
 
   const filteredCats = (categories.data ?? []).filter((c) => c.kind === kind);
-  const bankAccounts = (accounts.data ?? []).filter((a) => a.type === "checking" || a.type === "savings");
+  const bankAccounts = (accounts.data ?? []).filter((a) => a.type === "checking" || a.type === "savings" || a.type === "clearing");
   const loanAccounts = (accounts.data ?? []).filter((a) => a.type === "loan" || a.type === "credit_card" || a.type === "darlehen");
   const loanIcon = (t: string) => t === "credit_card" ? "💳" : t === "darlehen" ? "🤝" : "🏦";
   const loanLabel = (t: string) => t === "credit_card" ? "Karte" : t === "darlehen" ? "Darlehen" : "Kredit";
+
+  const selectedAccount = (accounts.data ?? []).find((a) => a.id === accountId);
+  // Auto-link to the clearing account's linked loan when applicable
+  const effectiveAccountIcon = (a: { type: string }) =>
+    a.type === "clearing" ? "⚖️" : a.type === "savings" ? "💰" : "🏦";
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
