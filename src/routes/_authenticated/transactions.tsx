@@ -144,7 +144,38 @@ function TransactionsPage() {
         </div>
       </div>
 
-      <DateRangePicker value={range} onChange={setRange} />
+      <div className="grid gap-3 lg:grid-cols-[1fr_auto]">
+        <div className={ymActive ? "opacity-60" : ""}>
+          <DateRangePicker value={range} onChange={setRange} />
+        </div>
+        <Card className="space-y-3 p-3">
+          <div className="text-sm text-muted-foreground">Monat / Jahr</div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={filterYear} onValueChange={setFilterYear}>
+              <SelectTrigger className="h-9 w-28"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Alle Jahre</SelectItem>
+                {YEARS.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={filterMonth} onValueChange={setFilterMonth}>
+              <SelectTrigger className="h-9 w-36"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Alle Monate</SelectItem>
+                {MONTHS_DE.map((m, i) => <SelectItem key={m} value={String(i + 1)}>{m}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            {ymActive && (
+              <Button variant="ghost" size="sm" onClick={() => { setFilterYear("all"); setFilterMonth("all"); }}>
+                Zurücksetzen
+              </Button>
+            )}
+          </div>
+          {ymActive && (
+            <p className="text-xs text-muted-foreground">Überschreibt den Zeitraum-Filter.</p>
+          )}
+        </Card>
+      </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card className="p-5">
