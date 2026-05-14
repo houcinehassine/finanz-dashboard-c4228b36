@@ -42,8 +42,18 @@ function TransactionsPage() {
   const accountById = useMemo(() => Object.fromEntries((accounts.data ?? []).map((a) => [a.id, a])), [accounts.data]);
   const catById = useMemo(() => Object.fromEntries((categories.data ?? []).map((c) => [c.id, c])), [categories.data]);
 
-  const filtered = useMemo(() => (txs.data ?? []).filter((t) => t.kind === view), [txs.data, view]);
-  const total = useMemo(() => filtered.reduce((s, t) => s + Number(t.amount), 0), [filtered]);
+  const filtered = useMemo(
+    () => (txs.data ?? []).filter((t) => view === "all" || t.kind === view),
+    [txs.data, view],
+  );
+  const totals = useMemo(() => {
+    let income = 0, expense = 0;
+    for (const t of filtered) {
+      if (t.kind === "income") income += Number(t.amount);
+      else expense += Number(t.amount);
+    }
+    return { income, expense, net: income - expense };
+  }, [filtered]);
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["transactions"] });
@@ -58,9 +68,10 @@ function TransactionsPage() {
   };
 
   const isExpense = view === "expense";
-  const title = isExpense ? "Ausgaben" : "Einnahmen";
-  const newLabel = isExpense ? "Neue Ausgabe" : "Neue Einnahme";
-  const amountTone = isExpense ? "text-red-500" : "text-emerald-500";
+  const isIncome = view === "income";
+  const title = view === "all" ? "Alle Transaktionen" : isExpense ? "Ausgaben" : "Einnahmen";
+  const newLabel = isIncome ? "Neue Einnahme" : "Neue Ausgabe";
+  const dialogDefaultKind: Transaction["kind"] = isIncome ? "income" : "expense";
 
   return (
     <div className="space-y-6">
