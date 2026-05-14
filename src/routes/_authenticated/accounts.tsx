@@ -229,9 +229,15 @@ function AccountDialog({ account, onClose }: { account: Partial<Account> | null;
     <DialogContent>
       <DialogHeader><DialogTitle>{account?.id ? "Konto bearbeiten" : "Neues Konto"}</DialogTitle></DialogHeader>
       <form onSubmit={submit} className="space-y-3">
-        <div>
-          <Label>Name</Label>
-          <Input required value={name} onChange={(e) => setName(e.target.value)} />
+        <div className="grid grid-cols-[80px_1fr] gap-3">
+          <div>
+            <Label>Emoji</Label>
+            <Input value={icon} onChange={(e) => setIcon(e.target.value)} maxLength={4} className="text-center text-xl" />
+          </div>
+          <div>
+            <Label>Name</Label>
+            <Input required value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
         </div>
         <div>
           <Label>Typ</Label>
