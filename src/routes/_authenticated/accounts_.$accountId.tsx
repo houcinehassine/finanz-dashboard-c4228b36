@@ -74,7 +74,7 @@ function AccountDetailPage() {
     const deltaByMonth = new Map<string, number>();
     for (const t of tList) {
       const k = t.occurred_on.slice(0, 7);
-      deltaByMonth.set(k, (deltaByMonth.get(k) ?? 0) + signFor(t.kind) * t.amount);
+      deltaByMonth.set(k, (deltaByMonth.get(k) ?? 0) + signFor(t) * t.amount);
     }
     const endBal = new Map<string, number>();
     let running = account.balance;
