@@ -16,16 +16,24 @@ export const Route = createFileRoute("/_authenticated/accounts_/$accountId")({
 function AccountDetailPage() {
   const { accountId } = Route.useParams();
   const balances = useAccountBalances();
-  const txs = useTransactions({ accountId });
   const cats = useCategories();
-
   const account = (balances.data ?? []).find((a) => a.id === accountId);
+  const isLoanLike = account?.type === "loan" || account?.type === "credit_card" || account?.type === "darlehen";
+  const txs = useTransactions(
+    isLoanLike ? { loanAccountId: accountId } : { accountId },
+  );
+
   const catById = useMemo(
     () => Object.fromEntries((cats.data ?? []).map((c) => [c.id, c])),
     [cats.data],
   );
 
   const tList = txs.data ?? [];
+  // Sign convention for this account's balance:
+  // - Bank account (filtered by account_id): income +, expense -
+  // - Loan-like (filtered by loan_account_id): expense + (Tilgung), income - (Auszahlung)
+  const signFor = (kind: "income" | "expense") =>
+    isLoanLike ? (kind === "expense" ? 1 : -1) : (kind === "income" ? 1 : -1);
 
   // Year stats
   const yearStats = useMemo(() => {
@@ -50,17 +58,13 @@ function AccountDetailPage() {
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       months.push({ key, label: key });
     }
-    // delta per month (income - expense)
     const deltaByMonth = new Map<string, number>();
     for (const t of tList) {
       const k = t.occurred_on.slice(0, 7);
-      const sign = t.kind === "income" ? 1 : -1;
-      deltaByMonth.set(k, (deltaByMonth.get(k) ?? 0) + sign * t.amount);
+      deltaByMonth.set(k, (deltaByMonth.get(k) ?? 0) + signFor(t.kind) * t.amount);
     }
-    // walk back from current balance to compute end-of-month balance
     const endBal = new Map<string, number>();
     let running = account.balance;
-    // sort months desc and subtract deltas to go backwards
     const sortedDesc = [...months].reverse();
     for (const m of sortedDesc) {
       endBal.set(m.key, running);
@@ -68,7 +72,7 @@ function AccountDetailPage() {
       running = running - delta;
     }
     return months.map((m) => ({ label: m.label, balance: endBal.get(m.key) ?? 0 }));
-  }, [tList, account]);
+  }, [tList, account, isLoanLike]);
 
   if (!balances.data) {
     return <div className="text-sm text-muted-foreground">Lädt…</div>;
