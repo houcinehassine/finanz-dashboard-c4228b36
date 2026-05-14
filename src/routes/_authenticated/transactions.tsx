@@ -394,7 +394,7 @@ function BulkEditDialog({ open, onOpenChange, ids, onDone }: { open: boolean; on
 
   const submit = async () => {
     if (ids.length === 0) return;
-    const patch: Record<string, unknown> = {};
+    const patch: Record<string, any> = {};
     if (accountId) patch.account_id = accountId;
     if (loanAccountId === "__none__") patch.loan_account_id = null;
     else if (loanAccountId) patch.loan_account_id = loanAccountId;
