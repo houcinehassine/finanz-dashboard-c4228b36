@@ -68,10 +68,12 @@ function RecurringPage() {
   const rules = useRecurringRules();
   const accounts = useAccounts();
   const categories = useCategories();
+  const allTx = useTransactions();
   const qc = useQueryClient();
+  const { user } = useAuth();
   const [editing, setEditing] = useState<Partial<RecurringRule> | null>(null);
   const [open, setOpen] = useState(false);
-  const [bookingId, setBookingId] = useState<string | null>(null);
+  const [bookingKey, setBookingKey] = useState<string | null>(null);
 
   const accountById = useMemo(() => Object.fromEntries((accounts.data ?? []).map((a) => [a.id, a])), [accounts.data]);
   const catById = useMemo(() => Object.fromEntries((categories.data ?? []).map((c) => [c.id, c])), [categories.data]);
@@ -84,8 +86,46 @@ function RecurringPage() {
   };
 
   const items = rules.data ?? [];
-  const today = new Date().toISOString().slice(0, 10);
-  const dueItems = items.filter((r) => r.active && r.next_due_on <= today && (!r.end_on || r.next_due_on <= r.end_on));
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayStr = today.toISOString().slice(0, 10);
+
+  const dueItems = useMemo(() => {
+    const txs = allTx.data ?? [];
+    const out: { rule: RecurringRule; date: string }[] = [];
+    for (const r of items) {
+      if (!r.active) continue;
+      const dom = r.day_of_month ?? Number((r.start_on || "").slice(8, 10)) || 1;
+      const start = new Date(r.start_on);
+      const end = r.end_on ? new Date(r.end_on) : null;
+      // first occurrence on/after start matching dom
+      let cur = new Date(start.getFullYear(), start.getMonth(), dom);
+      if (cur < start) {
+        if (r.frequency === "monthly") cur.setMonth(cur.getMonth() + 1);
+        else if (r.frequency === "quarterly") cur.setMonth(cur.getMonth() + 3);
+        else cur.setFullYear(cur.getFullYear() + 1);
+      }
+      let guard = 0;
+      while (cur <= today && (!end || cur <= end) && guard < 240) {
+        const pad = (n: number) => (n < 10 ? `0${n}` : String(n));
+        const dStr = `${cur.getFullYear()}-${pad(cur.getMonth() + 1)}-${pad(cur.getDate())}`;
+        const exists = txs.some((t) =>
+          t.account_id === r.account_id &&
+          t.kind === r.kind &&
+          Math.abs(Number(t.amount) - Number(r.amount)) < 0.005 &&
+          t.occurred_on === dStr &&
+          (t.loan_account_id ?? null) === (r.loan_account_id ?? null)
+        );
+        if (!exists) out.push({ rule: r, date: dStr });
+        if (r.frequency === "monthly") cur.setMonth(cur.getMonth() + 1);
+        else if (r.frequency === "quarterly") cur.setMonth(cur.getMonth() + 3);
+        else cur.setFullYear(cur.getFullYear() + 1);
+        guard++;
+      }
+    }
+    out.sort((a, b) => a.date.localeCompare(b.date));
+    return out;
+  }, [items, allTx.data, todayStr]);
 
   const onDelete = async (id: string) => {
     if (!confirm("Regel löschen? Bestehende Buchungen bleiben erhalten.")) return;
@@ -94,10 +134,30 @@ function RecurringPage() {
     else { toast.success("Gelöscht"); refresh(); }
   };
 
+  const onBookOccurrence = async (r: RecurringRule, date: string) => {
+    if (!user) return;
+    const key = `${r.id}:${date}`;
+    setBookingKey(key);
+    const { error } = await (supabase as any).from("transactions").insert({
+      user_id: user.id,
+      account_id: r.account_id,
+      category_id: r.category_id,
+      loan_account_id: r.loan_account_id,
+      kind: r.kind,
+      amount: r.amount,
+      occurred_on: date,
+      note: r.name || r.note || "",
+    });
+    setBookingKey(null);
+    if (error) toast.error(error.message);
+    else { toast.success("Buchung erstellt"); refresh(); }
+  };
+
   const onBookNow = async (id: string) => {
-    setBookingId(id);
+    const key = `now:${id}`;
+    setBookingKey(key);
     const { error } = await (supabase as any).rpc("book_recurring_now", { rule_id: id });
-    setBookingId(null);
+    setBookingKey(null);
     if (error) toast.error(error.message);
     else { toast.success("Buchung erstellt"); refresh(); }
   };
@@ -134,21 +194,25 @@ function RecurringPage() {
 
       <Card className="p-5">
         <div className="text-xs uppercase tracking-widest text-amber-500">Fällige Buchungen</div>
+        <p className="mt-1 text-xs text-muted-foreground">Vergangene geplante Termine ohne passende Transaktion</p>
         {dueItems.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">Keine fälligen Buchungen</p>
         ) : (
           <div className="mt-3 space-y-2">
-            {dueItems.map((r) => (
-              <div key={r.id} className="flex items-center justify-between gap-3 rounded-md border bg-muted/30 px-3 py-2">
-                <div className="min-w-0">
-                  <div className="truncate font-medium">{r.name || r.note || "Buchung"}</div>
-                  <div className="text-xs text-muted-foreground">Fällig: {fmtDate(r.next_due_on)} · {fmtEUR(r.amount)}</div>
+            {dueItems.map(({ rule: r, date }) => {
+              const key = `${r.id}:${date}`;
+              return (
+                <div key={key} className="flex items-center justify-between gap-3 rounded-md border bg-muted/30 px-3 py-2">
+                  <div className="min-w-0">
+                    <div className="truncate font-medium">{r.name || r.note || "Buchung"}</div>
+                    <div className="text-xs text-muted-foreground">Fällig: {fmtDate(date)} · {fmtEUR(r.amount)}</div>
+                  </div>
+                  <Button size="sm" onClick={() => onBookOccurrence(r, date)} disabled={bookingKey === key}>
+                    <Zap className="mr-1 h-4 w-4" />Jetzt buchen
+                  </Button>
                 </div>
-                <Button size="sm" onClick={() => onBookNow(r.id)} disabled={bookingId === r.id}>
-                  <Zap className="mr-1 h-4 w-4" />Jetzt buchen
-                </Button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </Card>
