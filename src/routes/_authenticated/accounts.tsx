@@ -286,6 +286,9 @@ function AccountDialog({ account, onClose }: { account: Partial<Account> | null;
           {type === "loan" && (
             <p className="mt-1 text-xs text-muted-foreground">Tipp: aktuelle Restschuld als negativen Wert eintragen.</p>
           )}
+          {type === "darlehen" && (
+            <p className="mt-1 text-xs text-muted-foreground">Tipp: offenen Betrag als negativen Wert eintragen (zinsfrei).</p>
+          )}
         </div>
         {type === "credit_card" && (
           <div>
@@ -308,6 +311,18 @@ function AccountDialog({ account, onClose }: { account: Partial<Account> | null;
                 <Label>Laufzeit (Monate)</Label>
                 <Input type="number" step="1" value={loanTerm} onChange={(e) => setLoanTerm(e.target.value)} />
               </div>
+            </div>
+          </>
+        )}
+        {type === "darlehen" && (
+          <>
+            <div>
+              <Label>Ursprünglicher Betrag (€) <span className="text-muted-foreground">(optional)</span></Label>
+              <Input type="number" step="0.01" value={loanPrincipal} onChange={(e) => setLoanPrincipal(e.target.value)} />
+            </div>
+            <div>
+              <Label>Rückzahlungsdatum <span className="text-muted-foreground">(optional)</span></Label>
+              <Input type="date" value={loanDueOn} onChange={(e) => setLoanDueOn(e.target.value)} />
             </div>
           </>
         )}
