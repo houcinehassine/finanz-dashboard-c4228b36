@@ -144,10 +144,12 @@ function DashboardPage() {
     const remaining = new Map<string, number>();
     for (const l of loans) remaining.set(l.id, Math.max(0, -l.starting_balance));
 
+    const fromMonth = from.slice(0, 7);
+    const toMonth = to.slice(0, 7);
     const months = new Set<string>();
     for (const t of relevant) months.add(t.occurred_on.slice(0, 7));
-    const today = new Date().toISOString().slice(0, 7);
-    months.add(today);
+    months.add(fromMonth);
+    months.add(toMonth);
     const sortedMonths = Array.from(months).sort();
 
     const points: Array<Record<string, number | string>> = [];
