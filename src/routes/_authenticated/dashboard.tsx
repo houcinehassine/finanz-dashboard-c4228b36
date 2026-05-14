@@ -179,14 +179,14 @@ function DashboardPage() {
       }
       const point: Record<string, number | string> = { month, label: fmtMonth(month + "-01") };
       for (const l of loans) point[l.id] = remaining.get(l.id) ?? 0;
-      points.push(point);
+      if (month >= fromMonth && month <= toMonth) points.push(point);
     }
 
     return {
       keys: loans.map((l) => ({ id: l.id, name: l.name })),
       data: points,
     };
-  }, [loans, allTxs.data]);
+  }, [loans, allTxs.data, from, to]);
 
 
   return (
