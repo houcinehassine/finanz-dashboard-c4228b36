@@ -153,9 +153,10 @@ function TransactionsPage() {
           <Select value={view} onValueChange={(v) => setView(v as ViewKind)}>
             <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Alle (Ein- & Ausgaben)</SelectItem>
+              <SelectItem value="all">Alle</SelectItem>
               <SelectItem value="expense">Ausgaben</SelectItem>
               <SelectItem value="income">Einnahmen</SelectItem>
+              <SelectItem value="transfer">Umbuchungen</SelectItem>
             </SelectContent>
           </Select>
           <Select value={filterAccount} onValueChange={setFilterAccount}>
