@@ -100,6 +100,41 @@ function TransactionsPage() {
     else { toast.success("Gelöscht"); refresh(); }
   };
 
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkEditOpen, setBulkEditOpen] = useState(false);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const filteredIds = useMemo(() => filtered.map((t) => t.id), [filtered]);
+  useEffect(() => {
+    setSelected((prev) => {
+      const ids = new Set(filteredIds);
+      const next = new Set<string>();
+      let changed = false;
+      for (const id of prev) {
+        if (ids.has(id)) next.add(id); else changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, [filteredIds]);
+  const toggleOne = (id: string, checked: boolean) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id); else next.delete(id);
+      return next;
+    });
+  };
+  const allSelected = filteredIds.length > 0 && filteredIds.every((id) => selected.has(id));
+  const toggleAll = (checked: boolean) => setSelected(checked ? new Set(filteredIds) : new Set());
+  const clearSelection = () => setSelected(new Set());
+  const selectedIds = useMemo(() => Array.from(selected), [selected]);
+
+  const onBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    const { error } = await supabase.from("transactions").delete().in("id", selectedIds);
+    if (error) toast.error(error.message);
+    else { toast.success(`${selectedIds.length} gelöscht`); clearSelection(); refresh(); }
+    setBulkDeleteOpen(false);
+  };
+
   const isExpense = view === "expense";
   const isIncome = view === "income";
   const title = view === "all" ? "Alle Transaktionen" : isExpense ? "Ausgaben" : "Einnahmen";
