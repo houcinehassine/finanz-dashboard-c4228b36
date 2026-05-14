@@ -115,6 +115,7 @@ function TransactionsPage() {
             {filtered.map((t) => {
               const cat = t.category_id ? catById[t.category_id] : null;
               const acc = accountById[t.account_id];
+              const loan = t.loan_account_id ? accountById[t.loan_account_id] : null;
               return (
                 <TableRow key={t.id}>
                   <TableCell className="whitespace-nowrap text-muted-foreground">{fmtDate(t.occurred_on)}</TableCell>
@@ -132,12 +133,20 @@ function TransactionsPage() {
                     )}
                   </TableCell>
                   <TableCell>
-                    {acc ? (
-                      <span className="text-sm">
-                        <span className="text-muted-foreground">Konto: </span>
-                        <span className="font-medium">{acc.name}</span>
-                      </span>
-                    ) : "—"}
+                    <div className="flex flex-col gap-1 text-sm">
+                      {acc && (
+                        <span>
+                          <span className="text-muted-foreground">Konto: </span>
+                          <span className="font-medium">{acc.name}</span>
+                        </span>
+                      )}
+                      {loan && (
+                        <Badge variant="outline" className="w-fit">
+                          {loan.type === "credit_card" ? "💳" : "🏦"} {loan.type === "credit_card" ? "Karte" : "Kredit"}: {loan.name}
+                        </Badge>
+                      )}
+                      {!acc && !loan && "—"}
+                    </div>
                   </TableCell>
                   <TableCell className={`text-right font-semibold ${amountTone}`}>
                     {isExpense ? "−" : "+"}{fmtEUR(Number(t.amount))}
