@@ -234,10 +234,34 @@ function TransactionsPage() {
         </Card>
       </div>
 
+      {selected.size > 0 && (
+        <Card className="sticky top-2 z-20 flex flex-wrap items-center justify-between gap-3 border-primary/40 bg-primary/5 p-3">
+          <div className="text-sm font-medium">{selected.size} ausgewählt</div>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={() => setBulkEditOpen(true)}>
+              <Pencil className="mr-2 h-4 w-4" />Bearbeiten
+            </Button>
+            <Button size="sm" variant="destructive" onClick={() => setBulkDeleteOpen(true)}>
+              <Trash2 className="mr-2 h-4 w-4" />Löschen
+            </Button>
+            <Button size="sm" variant="ghost" onClick={clearSelection}>
+              <X className="mr-2 h-4 w-4" />Abbrechen
+            </Button>
+          </div>
+        </Card>
+      )}
+
       <Card className="overflow-hidden p-0">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-10">
+                <Checkbox
+                  checked={allSelected}
+                  onCheckedChange={(v) => toggleAll(!!v)}
+                  aria-label="Alle auswählen"
+                />
+              </TableHead>
               <TableHead className="text-xs uppercase tracking-wider">Datum</TableHead>
               <TableHead className="text-xs uppercase tracking-wider">Beschreibung</TableHead>
               <TableHead className="text-xs uppercase tracking-wider">Kategorie</TableHead>
@@ -251,10 +275,26 @@ function TransactionsPage() {
               const cat = t.category_id ? catById[t.category_id] : null;
               const acc = accountById[t.account_id];
               const loan = t.loan_account_id ? accountById[t.loan_account_id] : null;
+              const isSel = selected.has(t.id);
               return (
-                <TableRow key={t.id}>
+                <TableRow key={t.id} data-state={isSel ? "selected" : undefined}>
+                  <TableCell>
+                    <Checkbox
+                      checked={isSel}
+                      onCheckedChange={(v) => toggleOne(t.id, !!v)}
+                      aria-label="Auswählen"
+                    />
+                  </TableCell>
                   <TableCell className="whitespace-nowrap text-muted-foreground">{fmtDate(t.occurred_on)}</TableCell>
-                  <TableCell className="font-medium">{t.note ?? (cat?.name ?? "—")}</TableCell>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      <span>{t.note ?? (cat?.name ?? "—")}</span>
+                      {t.is_anyfin && <Badge variant="outline" className="text-[10px]">Anyfin</Badge>}
+                      {t.interest_amount != null && t.interest_amount > 0 && (
+                        <Badge variant="outline" className="text-[10px]">Zins {fmtEUR(Number(t.interest_amount))}</Badge>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell>
                     {cat ? (
                       <Badge
@@ -295,7 +335,7 @@ function TransactionsPage() {
             })}
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="py-10 text-center text-sm text-muted-foreground">
+                <TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">
                   Noch keine {title.toLowerCase()}.
                 </TableCell>
               </TableRow>
@@ -303,7 +343,154 @@ function TransactionsPage() {
           </TableBody>
         </Table>
       </Card>
+
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{selected.size} Einträge wirklich löschen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Diese Aktion kann nicht rückgängig gemacht werden.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction onClick={onBulkDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Löschen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <BulkEditDialog
+        open={bulkEditOpen}
+        onOpenChange={setBulkEditOpen}
+        ids={selectedIds}
+        onDone={() => { clearSelection(); refresh(); }}
+      />
     </div>
+  );
+}
+
+function BulkEditDialog({ open, onOpenChange, ids, onDone }: { open: boolean; onOpenChange: (v: boolean) => void; ids: string[]; onDone: () => void }) {
+  const accounts = useAccounts();
+  const categories = useCategories();
+  const [accountId, setAccountId] = useState<string>("");
+  const [loanAccountId, setLoanAccountId] = useState<string>("");
+  const [categoryId, setCategoryId] = useState<string>("");
+  const [interestStr, setInterestStr] = useState<string>("");
+  const [setAnyfin, setSetAnyfin] = useState(false);
+  const [anyfinValue, setAnyfinValue] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setAccountId(""); setLoanAccountId(""); setCategoryId("");
+      setInterestStr(""); setSetAnyfin(false); setAnyfinValue(false);
+    }
+  }, [open]);
+
+  const bankAccounts = (accounts.data ?? []).filter((a) => a.type === "checking" || a.type === "savings" || a.type === "clearing");
+  const loanAccounts = (accounts.data ?? []).filter((a) => a.type === "loan" || a.type === "credit_card" || a.type === "darlehen");
+
+  const submit = async () => {
+    if (ids.length === 0) return;
+    const patch: Record<string, unknown> = {};
+    if (accountId) patch.account_id = accountId;
+    if (loanAccountId === "__none__") patch.loan_account_id = null;
+    else if (loanAccountId) patch.loan_account_id = loanAccountId;
+    if (categoryId === "__none__") patch.category_id = null;
+    else if (categoryId) patch.category_id = categoryId;
+    if (interestStr.trim() !== "") {
+      const n = Number(interestStr);
+      if (!Number.isFinite(n)) { toast.error("Ungültige Zinsen"); return; }
+      patch.interest_amount = n;
+    }
+    if (setAnyfin) patch.is_anyfin = anyfinValue;
+
+    if (Object.keys(patch).length === 0) {
+      toast.error("Keine Änderungen ausgewählt");
+      return;
+    }
+    setBusy(true);
+    const { error } = await supabase.from("transactions").update(patch).in("id", ids);
+    setBusy(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`${ids.length} aktualisiert`);
+    onOpenChange(false);
+    onDone();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{ids.length} Transaktionen bearbeiten</DialogTitle>
+        </DialogHeader>
+        <p className="text-xs text-muted-foreground">
+          Nur Felder, die du hier setzt, werden überschrieben. Leere Felder bleiben unverändert.
+        </p>
+        <div className="space-y-3">
+          <div>
+            <Label>Konto</Label>
+            <Select value={accountId} onValueChange={setAccountId}>
+              <SelectTrigger><SelectValue placeholder="Unverändert lassen" /></SelectTrigger>
+              <SelectContent>
+                {bankAccounts.map((a) => <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}{a.type === "clearing" ? " (Verrechnung)" : ""}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Verknüpftes Konto (Kredit/Karte/Darlehen)</Label>
+            <Select value={loanAccountId} onValueChange={setLoanAccountId}>
+              <SelectTrigger><SelectValue placeholder="Unverändert lassen" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">— Entfernen —</SelectItem>
+                {loanAccounts.map((a) => <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Kategorie</Label>
+            <Select value={categoryId} onValueChange={setCategoryId}>
+              <SelectTrigger><SelectValue placeholder="Unverändert lassen" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">— Entfernen —</SelectItem>
+                {(categories.data ?? []).map((c) => <SelectItem key={c.id} value={c.id}>{c.icon} {c.name} ({c.kind === "income" ? "Einn." : "Ausg."})</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Zinsen (€)</Label>
+            <Input
+              type="number" step="0.01" min="0"
+              placeholder="Unverändert lassen"
+              value={interestStr}
+              onChange={(e) => setInterestStr(e.target.value)}
+            />
+          </div>
+          <div className="flex items-center justify-between rounded-md border p-3">
+            <div>
+              <Label>Anyfin-Flag setzen</Label>
+              <p className="text-xs text-muted-foreground">Aktivieren, um den Anyfin-Status zu überschreiben.</p>
+            </div>
+            <Switch checked={setAnyfin} onCheckedChange={setSetAnyfin} />
+          </div>
+          {setAnyfin && (
+            <div className="flex items-center justify-between rounded-md border p-3">
+              <Label>Wert</Label>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">{anyfinValue ? "Anyfin: Ja" : "Anyfin: Nein"}</span>
+                <Switch checked={anyfinValue} onCheckedChange={setAnyfinValue} />
+              </div>
+            </div>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>Abbrechen</Button>
+          <Button onClick={submit} disabled={busy}>Speichern</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
