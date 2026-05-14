@@ -93,6 +93,16 @@ function AccountsPage() {
         <AccountGrid items={loans} onEdit={(a) => { setEditing(a); setOpen(true); }} onArchive={onArchive} onDelete={onDelete} emptyHint="Noch keine Kredite." />
       </section>
 
+      <section className="space-y-4">
+        <SectionHeader
+          title="Darlehen"
+          desc="Zinsfreie private Darlehen. Optionales Rückzahlungsdatum."
+          icon={<HandCoins className="h-5 w-5 text-primary" />}
+          onNew={() => newOf("darlehen")}
+        />
+        <AccountGrid items={darlehen} onEdit={(a) => { setEditing(a); setOpen(true); }} onArchive={onArchive} onDelete={onDelete} emptyHint="Noch keine Darlehen." />
+      </section>
+
       <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setEditing(null); refresh(); } }}>
         <AccountDialog key={editing?.id ?? `new-${editing?.type ?? "checking"}`} account={editing} onClose={() => { setOpen(false); setEditing(null); refresh(); }} />
       </Dialog>
