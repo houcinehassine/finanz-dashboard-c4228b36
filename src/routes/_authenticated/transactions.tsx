@@ -14,6 +14,7 @@ import { fmtEUR, fmtDate } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { Plus, Trash2, Pencil } from "lucide-react";
+import { DateRangePicker, DEFAULT_RANGE, rangeToFromTo, type RangeValue } from "@/components/DateRangePicker";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/transactions")({
@@ -27,8 +28,12 @@ function TransactionsPage() {
   const categories = useCategories();
   const [view, setView] = useState<ViewKind>("expense");
   const [filterAccount, setFilterAccount] = useState<string>("all");
+  const [range, setRange] = useState<RangeValue>(DEFAULT_RANGE);
+  const { from, to } = useMemo(() => rangeToFromTo(range), [range]);
   const txs = useTransactions({
     accountId: filterAccount === "all" ? undefined : filterAccount,
+    from,
+    to,
   });
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -87,6 +92,8 @@ function TransactionsPage() {
           </Dialog>
         </div>
       </div>
+
+      <DateRangePicker value={range} onChange={setRange} />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Card className="p-5">
