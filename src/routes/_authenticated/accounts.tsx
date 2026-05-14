@@ -62,40 +62,35 @@ function AccountsPage() {
         </p>
       </div>
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
-        <TabsList className="grid w-full grid-cols-3 sm:w-auto">
-          <TabsTrigger value="bank"><Wallet className="mr-2 h-4 w-4" />Bankkonten</TabsTrigger>
-          <TabsTrigger value="credit_card"><CreditCard className="mr-2 h-4 w-4" />Kreditkarten</TabsTrigger>
-          <TabsTrigger value="loan"><Landmark className="mr-2 h-4 w-4" />Kredite</TabsTrigger>
-        </TabsList>
+      <section className="space-y-4">
+        <SectionHeader
+          title="Bankkonten"
+          desc="Giro- und Sparkonten. Saldo = Startsaldo + Einnahmen − Ausgaben."
+          icon={<Wallet className="h-5 w-5 text-primary" />}
+          onNew={() => newOf("checking")}
+        />
+        <AccountGrid items={bank} onEdit={(a) => { setEditing(a); setOpen(true); }} onArchive={onArchive} onDelete={onDelete} emptyHint="Noch keine Bankkonten." />
+      </section>
 
-        <TabsContent value="bank" className="mt-4 space-y-4">
-          <SectionHeader
-            title="Bankkonten"
-            desc="Giro- und Sparkonten. Saldo = Startsaldo + Einnahmen − Ausgaben."
-            onNew={() => newOf("checking")}
-          />
-          <AccountGrid items={bank} onEdit={(a) => { setEditing(a); setOpen(true); }} onArchive={onArchive} onDelete={onDelete} emptyHint="Noch keine Bankkonten." />
-        </TabsContent>
+      <section className="space-y-4">
+        <SectionHeader
+          title="Kreditkarten"
+          desc="Ausgaben belasten die Karte (negativer Saldo). Tilgung als Umbuchung vom Girokonto."
+          icon={<CreditCard className="h-5 w-5 text-primary" />}
+          onNew={() => newOf("credit_card")}
+        />
+        <AccountGrid items={cards} onEdit={(a) => { setEditing(a); setOpen(true); }} onArchive={onArchive} onDelete={onDelete} emptyHint="Noch keine Kreditkarten." />
+      </section>
 
-        <TabsContent value="credit_card" className="mt-4 space-y-4">
-          <SectionHeader
-            title="Kreditkarten"
-            desc="Ausgaben belasten die Karte (negativer Saldo). Tilgung als Umbuchung vom Girokonto."
-            onNew={() => newOf("credit_card")}
-          />
-          <AccountGrid items={cards} onEdit={(a) => { setEditing(a); setOpen(true); }} onArchive={onArchive} onDelete={onDelete} emptyHint="Noch keine Kreditkarten." />
-        </TabsContent>
-
-        <TabsContent value="loan" className="mt-4 space-y-4">
-          <SectionHeader
-            title="Kredite"
-            desc="Restschuld = Ursprungsbetrag − Summe der Tilgungen (vom Kreditkonto verbuchte Ausgaben)."
-            onNew={() => newOf("loan")}
-          />
-          <AccountGrid items={loans} onEdit={(a) => { setEditing(a); setOpen(true); }} onArchive={onArchive} onDelete={onDelete} emptyHint="Noch keine Kredite." />
-        </TabsContent>
-      </Tabs>
+      <section className="space-y-4">
+        <SectionHeader
+          title="Kredite"
+          desc="Restschuld = Ursprungsbetrag − Summe der Tilgungen (vom Kreditkonto verbuchte Ausgaben)."
+          icon={<Landmark className="h-5 w-5 text-primary" />}
+          onNew={() => newOf("loan")}
+        />
+        <AccountGrid items={loans} onEdit={(a) => { setEditing(a); setOpen(true); }} onArchive={onArchive} onDelete={onDelete} emptyHint="Noch keine Kredite." />
+      </section>
 
       <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setEditing(null); refresh(); } }}>
         <AccountDialog key={editing?.id ?? `new-${editing?.type ?? "checking"}`} account={editing} onClose={() => { setOpen(false); setEditing(null); refresh(); }} />
