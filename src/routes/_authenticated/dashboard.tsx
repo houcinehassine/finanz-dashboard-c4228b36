@@ -182,7 +182,7 @@ function DashboardPage() {
       keys: loans.map((l) => ({ id: l.id, name: l.name })),
       data: points,
     };
-  }, [loans, allTxs.data, from, to]);
+  }, [loans, allTxs.data]);
 
 
   return (
