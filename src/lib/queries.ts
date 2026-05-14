@@ -94,7 +94,7 @@ export function useCategories() {
     queryFn: async (): Promise<Category[]> => {
       const { data, error } = await supabase
         .from("categories")
-        .select("id,name,kind,color,icon,archived")
+        .select("id,name,kind,color,icon,archived,is_system")
         .order("name");
       if (error) throw error;
       return data ?? [];
