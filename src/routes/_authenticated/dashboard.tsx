@@ -139,9 +139,9 @@ function DashboardPage() {
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={expenseByCat} dataKey="value" nameKey="name" outerRadius={80} label>
+                  <Pie data={expenseByCat} dataKey="value" nameKey="name" innerRadius={50} outerRadius={85} paddingAngle={2}>
                     {expenseByCat.map((e, i) => (
-                      <Cell key={i} fill={e.color} />
+                      <Cell key={i} fill={e.color} stroke="hsl(var(--background))" strokeWidth={2} />
                     ))}
                   </Pie>
                   <Tooltip formatter={(v: number) => fmtEUR(v)} />
