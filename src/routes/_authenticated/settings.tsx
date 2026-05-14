@@ -7,8 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/integrations/supabase/client";
-import { LogOut, User, Globe, FileUp, ListChecks, Tags } from "lucide-react";
+import { LogOut, User, Globe, FileUp, ListChecks, Tags, Sun, Moon } from "lucide-react";
 import { CategoriesManager } from "@/components/CategoriesManager";
+import { usePreferences } from "@/lib/preferences";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   component: SettingsPage,
@@ -58,11 +59,8 @@ function SettingsPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="language" className="mt-4">
-          <Card className="p-5">
-            <h2 className="mb-1 text-sm font-semibold">Sprache</h2>
-            <p className="text-sm text-muted-foreground">Aktuelle Sprache: Deutsch (DE). Weitere Sprachen folgen.</p>
-          </Card>
+        <TabsContent value="language" className="mt-4 space-y-4">
+          <AppearanceCard />
         </TabsContent>
 
         <TabsContent value="csv" className="mt-4">
@@ -89,5 +87,36 @@ function SettingsPage() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+function AppearanceCard() {
+  const { theme, setTheme, lang, setLang, t } = usePreferences();
+  return (
+    <>
+      <Card className="p-5">
+        <h2 className="mb-3 text-sm font-semibold">{t("settings_appearance")}</h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm text-muted-foreground">{t("settings_theme")}:</span>
+          <Button variant={theme === "light" ? "default" : "outline"} size="sm" onClick={() => setTheme("light")}>
+            <Sun className="mr-2 h-4 w-4" /> {t("theme_light")}
+          </Button>
+          <Button variant={theme === "dark" ? "default" : "outline"} size="sm" onClick={() => setTheme("dark")}>
+            <Moon className="mr-2 h-4 w-4" /> {t("theme_dark")}
+          </Button>
+        </div>
+      </Card>
+      <Card className="p-5">
+        <h2 className="mb-3 text-sm font-semibold">{t("settings_language")}</h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant={lang === "de" ? "default" : "outline"} size="sm" onClick={() => setLang("de")}>
+            🇩🇪 {t("lang_de")}
+          </Button>
+          <Button variant={lang === "en" ? "default" : "outline"} size="sm" onClick={() => setLang("en")}>
+            🇬🇧 {t("lang_en")}
+          </Button>
+        </div>
+      </Card>
+    </>
   );
 }
