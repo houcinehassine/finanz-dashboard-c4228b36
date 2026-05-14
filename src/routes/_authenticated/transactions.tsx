@@ -14,6 +14,7 @@ import { fmtEUR, fmtDate } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { Plus, Trash2, Pencil } from "lucide-react";
+import { DateRangePicker, DEFAULT_RANGE, rangeToFromTo, type RangeValue } from "@/components/DateRangePicker";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/transactions")({
