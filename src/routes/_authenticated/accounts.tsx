@@ -220,8 +220,9 @@ function AccountDialog({ account, onClose }: { account: Partial<Account> | null;
   const [loanPrincipal, setLoanPrincipal] = useState(String(account?.loan_principal ?? ""));
   const [loanRate, setLoanRate] = useState(String(account?.loan_interest_rate ?? ""));
   const [loanTerm, setLoanTerm] = useState(String(account?.loan_term_months ?? ""));
+  const [loanDueOn, setLoanDueOn] = useState(account?.loan_due_on ?? "");
   const defaultIcon = (t: Account["type"]) =>
-    t === "credit_card" ? "💳" : t === "loan" ? "🏛️" : t === "savings" ? "💰" : "🏦";
+    t === "credit_card" ? "💳" : t === "loan" ? "🏛️" : t === "darlehen" ? "🤝" : t === "savings" ? "💰" : "🏦";
   const [icon, setIcon] = useState(account?.icon ?? defaultIcon((account?.type as Account["type"]) ?? "checking"));
   const [busy, setBusy] = useState(false);
 
