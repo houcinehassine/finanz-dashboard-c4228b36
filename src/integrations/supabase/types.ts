@@ -366,7 +366,7 @@ export type Database = {
         | "clearing"
       category_kind: "income" | "expense"
       recurring_frequency: "monthly" | "quarterly" | "yearly"
-      transaction_kind: "income" | "expense"
+      transaction_kind: "income" | "expense" | "transfer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -504,7 +504,7 @@ export const Constants = {
       ],
       category_kind: ["income", "expense"],
       recurring_frequency: ["monthly", "quarterly", "yearly"],
-      transaction_kind: ["income", "expense"],
+      transaction_kind: ["income", "expense", "transfer"],
     },
   },
 } as const
