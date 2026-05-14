@@ -8,11 +8,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
-import { useAccountBalances, type Account, type AccountBalance } from "@/lib/queries";
+import { useAccountBalances, useAccounts, type Account, type AccountBalance } from "@/lib/queries";
 import { fmtEUR, accountTypeLabel } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { Plus, Pencil, Archive, Trash2, Wallet, CreditCard, Landmark, HandCoins } from "lucide-react";
+import { Plus, Pencil, Archive, Trash2, Wallet, CreditCard, Landmark, HandCoins, Scale } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/accounts")({
