@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { useAccountBalances, useMonthlySummary, useTransactions, useCategories } from "@/lib/queries";
@@ -87,11 +87,16 @@ function DashboardPage() {
         <h2 className="mb-2 text-sm font-medium">Konten</h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {(balances.data ?? []).filter((a) => !a.archived).map((a) => (
-            <Card key={a.id} className="p-4">
-              <div className="text-xs text-muted-foreground">{accountTypeLabel[a.type]}</div>
-              <div className="mt-1 font-medium">{a.name}</div>
-              <div className={`mt-2 text-xl font-semibold ${a.balance < 0 ? "text-red-600" : ""}`}>{fmtEUR(a.balance)}</div>
-            </Card>
+            <Link key={a.id} to="/accounts/$accountId" params={{ accountId: a.id }} className="block">
+              <Card className="p-4 transition hover:border-primary/50">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span className="text-base">{a.icon || "🏦"}</span>
+                  {accountTypeLabel[a.type]}
+                </div>
+                <div className="mt-1 font-medium">{a.name}</div>
+                <div className={`mt-2 text-xl font-semibold ${a.balance < 0 ? "text-red-600" : ""}`}>{fmtEUR(a.balance)}</div>
+              </Card>
+            </Link>
           ))}
           {balances.data && balances.data.filter((a) => !a.archived).length === 0 && (
             <Card className="col-span-full p-6 text-center text-sm text-muted-foreground">
