@@ -16,7 +16,7 @@ import { useAccounts, useCategories, useTransactions, type Transaction } from "@
 import { fmtEUR, fmtDate } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { Plus, Trash2, Pencil, X } from "lucide-react";
+import { Plus, Trash2, Pencil, X, Copy } from "lucide-react";
 import { DateRangePicker, DEFAULT_RANGE, rangeToFromTo, type RangeValue } from "@/components/DateRangePicker";
 import { toast } from "sonner";
 
@@ -95,10 +95,30 @@ function TransactionsPage() {
     qc.invalidateQueries({ queryKey: ["monthly_summary"] });
   };
 
+  const { user } = useAuth();
   const onDelete = async (id: string) => {
     const { error } = await supabase.from("transactions").delete().eq("id", id);
     if (error) toast.error(error.message);
     else { toast.success("Gelöscht"); refresh(); }
+  };
+
+  const onDuplicate = async (t: Transaction) => {
+    if (!user) return;
+    const { error } = await supabase.from("transactions").insert({
+      user_id: user.id,
+      account_id: t.account_id,
+      category_id: t.category_id,
+      loan_account_id: t.loan_account_id,
+      kind: t.kind,
+      amount: t.amount,
+      occurred_on: new Date().toISOString().slice(0, 10),
+      note: t.note,
+      interest_amount: t.interest_amount,
+      is_anyfin: t.is_anyfin,
+      transfer_to_account_id: t.transfer_to_account_id,
+    });
+    if (error) toast.error(error.message);
+    else { toast.success("Dupliziert"); refresh(); }
   };
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -337,8 +357,9 @@ function TransactionsPage() {
                     {isTransfer ? fmtEUR(Number(t.amount)) : `${t.kind === "expense" ? "−" : "+"}${fmtEUR(Number(t.amount))}`}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button size="icon" variant="ghost" onClick={() => { setEditing(t); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
-                    <Button size="icon" variant="ghost" onClick={() => onDelete(t.id)}><Trash2 className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="ghost" onClick={() => { setEditing(t); setOpen(true); }} title="Bearbeiten"><Pencil className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="ghost" onClick={() => onDuplicate(t)} title="Duplizieren"><Copy className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="ghost" onClick={() => onDelete(t.id)} title="Löschen"><Trash2 className="h-4 w-4" /></Button>
                   </TableCell>
                 </TableRow>
               );
