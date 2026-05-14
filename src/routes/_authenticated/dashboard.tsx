@@ -120,11 +120,11 @@ function DashboardPage() {
         </Card>
 
         <Card className="p-4">
-          <h3 className="mb-3 text-sm font-medium">Ausgaben nach Kategorie (aktueller Monat)</h3>
+          <h3 className="mb-3 text-sm font-medium">Ausgaben nach Kategorie ({periodLabel})</h3>
           <div className="h-64">
             {expenseByCat.length === 0 ? (
               <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                Keine Ausgaben in diesem Monat.
+                Keine Ausgaben im gewählten Zeitraum.
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
