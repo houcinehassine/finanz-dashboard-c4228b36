@@ -21,12 +21,12 @@ export const Route = createFileRoute("/_authenticated/transactions")({
   component: TransactionsPage,
 });
 
-type ViewKind = "expense" | "income";
+type ViewKind = "all" | "expense" | "income";
 
 function TransactionsPage() {
   const accounts = useAccounts();
   const categories = useCategories();
-  const [view, setView] = useState<ViewKind>("expense");
+  const [view, setView] = useState<ViewKind>("all");
   const [filterAccount, setFilterAccount] = useState<string>("all");
   const [range, setRange] = useState<RangeValue>(DEFAULT_RANGE);
   const { from, to } = useMemo(() => rangeToFromTo(range), [range]);
@@ -42,8 +42,18 @@ function TransactionsPage() {
   const accountById = useMemo(() => Object.fromEntries((accounts.data ?? []).map((a) => [a.id, a])), [accounts.data]);
   const catById = useMemo(() => Object.fromEntries((categories.data ?? []).map((c) => [c.id, c])), [categories.data]);
 
-  const filtered = useMemo(() => (txs.data ?? []).filter((t) => t.kind === view), [txs.data, view]);
-  const total = useMemo(() => filtered.reduce((s, t) => s + Number(t.amount), 0), [filtered]);
+  const filtered = useMemo(
+    () => (txs.data ?? []).filter((t) => view === "all" || t.kind === view),
+    [txs.data, view],
+  );
+  const totals = useMemo(() => {
+    let income = 0, expense = 0;
+    for (const t of filtered) {
+      if (t.kind === "income") income += Number(t.amount);
+      else expense += Number(t.amount);
+    }
+    return { income, expense, net: income - expense };
+  }, [filtered]);
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["transactions"] });
@@ -58,9 +68,10 @@ function TransactionsPage() {
   };
 
   const isExpense = view === "expense";
-  const title = isExpense ? "Ausgaben" : "Einnahmen";
-  const newLabel = isExpense ? "Neue Ausgabe" : "Neue Einnahme";
-  const amountTone = isExpense ? "text-red-500" : "text-emerald-500";
+  const isIncome = view === "income";
+  const title = view === "all" ? "Alle Transaktionen" : isExpense ? "Ausgaben" : "Einnahmen";
+  const newLabel = isIncome ? "Neue Einnahme" : "Neue Ausgabe";
+  const dialogDefaultKind: Transaction["kind"] = isIncome ? "income" : "expense";
 
   return (
     <div className="space-y-6">
@@ -71,8 +82,9 @@ function TransactionsPage() {
         </div>
         <div className="flex items-center gap-2">
           <Select value={view} onValueChange={(v) => setView(v as ViewKind)}>
-            <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
             <SelectContent>
+              <SelectItem value="all">Alle (Ein- & Ausgaben)</SelectItem>
               <SelectItem value="expense">Ausgaben</SelectItem>
               <SelectItem value="income">Einnahmen</SelectItem>
             </SelectContent>
@@ -88,21 +100,29 @@ function TransactionsPage() {
             <DialogTrigger asChild>
               <Button onClick={() => setEditing(null)}><Plus className="mr-2 h-4 w-4" />{newLabel}</Button>
             </DialogTrigger>
-            <TransactionDialog key={editing?.id ?? "new"} tx={editing} defaultKind={view} onClose={() => { setOpen(false); setEditing(null); refresh(); }} />
+            <TransactionDialog key={editing?.id ?? "new"} tx={editing} defaultKind={dialogDefaultKind} onClose={() => { setOpen(false); setEditing(null); refresh(); }} />
           </Dialog>
         </div>
       </div>
 
       <DateRangePicker value={range} onChange={setRange} />
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card className="p-5">
-          <div className="text-xs uppercase tracking-widest text-muted-foreground">{title}</div>
-          <div className={`mt-2 text-3xl font-bold ${amountTone}`}>{fmtEUR(total)}</div>
+          <div className="text-xs uppercase tracking-widest text-muted-foreground">Einnahmen</div>
+          <div className="mt-2 text-2xl font-bold text-emerald-500">{fmtEUR(totals.income)}</div>
+        </Card>
+        <Card className="p-5">
+          <div className="text-xs uppercase tracking-widest text-muted-foreground">Ausgaben</div>
+          <div className="mt-2 text-2xl font-bold text-red-500">{fmtEUR(totals.expense)}</div>
+        </Card>
+        <Card className="p-5">
+          <div className="text-xs uppercase tracking-widest text-muted-foreground">Netto</div>
+          <div className={`mt-2 text-2xl font-bold ${totals.net < 0 ? "text-red-500" : "text-emerald-500"}`}>{fmtEUR(totals.net)}</div>
         </Card>
         <Card className="p-5">
           <div className="text-xs uppercase tracking-widest text-muted-foreground">Anzahl</div>
-          <div className="mt-2 text-3xl font-bold">{filtered.length}</div>
+          <div className="mt-2 text-2xl font-bold">{filtered.length}</div>
         </Card>
       </div>
 
@@ -155,8 +175,8 @@ function TransactionsPage() {
                       {!acc && !loan && "—"}
                     </div>
                   </TableCell>
-                  <TableCell className={`text-right font-semibold ${amountTone}`}>
-                    {isExpense ? "−" : "+"}{fmtEUR(Number(t.amount))}
+                  <TableCell className={`text-right font-semibold ${t.kind === "expense" ? "text-red-500" : "text-emerald-500"}`}>
+                    {t.kind === "expense" ? "−" : "+"}{fmtEUR(Number(t.amount))}
                   </TableCell>
                   <TableCell className="text-right">
                     <Button size="icon" variant="ghost" onClick={() => { setEditing(t); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
