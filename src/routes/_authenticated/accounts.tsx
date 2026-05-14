@@ -104,6 +104,16 @@ function AccountsPage() {
         <AccountGrid items={darlehen} onEdit={(a) => { setEditing(a); setOpen(true); }} onArchive={onArchive} onDelete={onDelete} emptyHint="Noch keine Darlehen." />
       </section>
 
+      <section className="space-y-4">
+        <SectionHeader
+          title="Verrechnungskonten"
+          desc="Virtuelles Konto für thesaurierte Zinsen / verrechnete Beträge. Zählt nicht zum verfügbaren Geld (Cashflow), wirkt aber über die Verknüpfung auf den Saldo des Kredits."
+          icon={<Scale className="h-5 w-5 text-primary" />}
+          onNew={() => newOf("clearing")}
+        />
+        <AccountGrid items={clearings} onEdit={(a) => { setEditing(a); setOpen(true); }} onArchive={onArchive} onDelete={onDelete} emptyHint="Noch keine Verrechnungskonten." />
+      </section>
+
       <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setEditing(null); refresh(); } }}>
         <AccountDialog key={editing?.id ?? `new-${editing?.type ?? "checking"}`} account={editing} onClose={() => { setOpen(false); setEditing(null); refresh(); }} />
       </Dialog>
