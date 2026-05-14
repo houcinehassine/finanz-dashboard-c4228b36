@@ -12,7 +12,7 @@ import { useAccountBalances, type Account, type AccountBalance } from "@/lib/que
 import { fmtEUR, accountTypeLabel } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { Plus, Pencil, Archive, Trash2, Wallet, CreditCard, Landmark } from "lucide-react";
+import { Plus, Pencil, Archive, Trash2, Wallet, CreditCard, Landmark, HandCoins } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/accounts")({
