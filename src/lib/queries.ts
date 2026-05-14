@@ -141,6 +141,7 @@ export function useTransactions(filters?: { accountId?: string; loanAccountId?: 
         amount: Number(t.amount),
         interest_amount: t.interest_amount != null ? Number(t.interest_amount) : null,
         is_anyfin: !!t.is_anyfin,
+        transfer_to_account_id: t.transfer_to_account_id ?? null,
       })) as Transaction[];
     },
   });
