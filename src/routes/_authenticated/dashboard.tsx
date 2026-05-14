@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { useAccountBalances, useTransactions, useCategories } from "@/lib/queries";
 import { fmtEUR, fmtMonth, accountTypeLabel } from "@/lib/format";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, RadialBarChart, RadialBar, PolarAngleAxis } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, RadialBarChart, RadialBar, PolarAngleAxis, LineChart, Line, CartesianGrid } from "recharts";
 import { TrendingUp, TrendingDown, Wallet, CreditCard, PiggyBank, Landmark } from "lucide-react";
 import { DateRangePicker, DEFAULT_RANGE, rangeLabel, rangeToFromTo, type RangeValue } from "@/components/DateRangePicker";
 
@@ -18,6 +18,7 @@ function DashboardPage() {
 
   const balances = useAccountBalances();
   const txs = useTransactions({ from, to });
+  const allTxs = useTransactions();
   const cats = useCategories();
 
   const monthlyInRange = useMemo(() => {
@@ -84,6 +85,58 @@ function DashboardPage() {
   const cardColor = cardPct >= 90 ? "#ef4444" : cardPct >= 70 ? "#f59e0b" : "#10b981";
 
   const periodLabel = rangeLabel(range);
+
+  const loanSeries = useMemo<{
+    keys: { id: string; name: string }[];
+    data: Array<Record<string, number | string>>;
+  }>(() => {
+    if (loans.length === 0 || !allTxs.data) return { keys: [], data: [] };
+    const loanIds = new Set(loans.map((l) => l.id));
+    const relevant = allTxs.data
+      .filter((t) => loanIds.has(t.account_id) || (t.loan_account_id && loanIds.has(t.loan_account_id)))
+      .slice()
+      .sort((a, b) => a.occurred_on.localeCompare(b.occurred_on));
+    if (relevant.length === 0) return { keys: [], data: [] };
+
+    // Running remaining-debt per loan, snapshotted per month
+    const remaining = new Map<string, number>();
+    for (const l of loans) remaining.set(l.id, Math.max(0, -l.starting_balance));
+
+    const months = new Set<string>();
+    for (const t of relevant) months.add(t.occurred_on.slice(0, 7));
+    const today = new Date().toISOString().slice(0, 7);
+    months.add(today);
+    const sortedMonths = Array.from(months).sort();
+
+    const points: Array<Record<string, number | string>> = [];
+    let idx = 0;
+    for (const month of sortedMonths) {
+      while (idx < relevant.length && relevant[idx].occurred_on.slice(0, 7) <= month) {
+        const t = relevant[idx];
+        // Direct on the loan account
+        if (loanIds.has(t.account_id)) {
+          const cur = remaining.get(t.account_id) ?? 0;
+          // expense on a loan = increase debt; income on a loan = decrease debt
+          remaining.set(t.account_id, Math.max(0, cur + (t.kind === "expense" ? t.amount : -t.amount)));
+        }
+        // Linked principal payment from another account
+        if (t.loan_account_id && loanIds.has(t.loan_account_id)) {
+          const cur = remaining.get(t.loan_account_id) ?? 0;
+          remaining.set(t.loan_account_id, Math.max(0, cur - t.amount));
+        }
+        idx++;
+      }
+      const point: Record<string, number | string> = { month, label: fmtMonth(month + "-01") };
+      for (const l of loans) point[l.id] = remaining.get(l.id) ?? 0;
+      points.push(point);
+    }
+
+    return {
+      keys: loans.map((l) => ({ id: l.id, name: l.name })),
+      data: points,
+    };
+  }, [loans, allTxs.data]);
+
 
   return (
     <div className="space-y-6">
@@ -296,9 +349,88 @@ function DashboardPage() {
           )}
         </Card>
       </div>
+
+      {/* Row 4: Kredite + Verlauf */}
+      {loans.length > 0 && (
+        <div className="grid gap-4 lg:grid-cols-3">
+          <Card className="p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">Kredite</div>
+              <Landmark className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <div className="space-y-2">
+              {loans.map((l) => {
+                const principal = l.loan_principal ?? Math.abs(l.starting_balance);
+                const remaining = Math.max(0, -l.balance);
+                const paid = Math.max(0, principal - remaining);
+                const pct = principal > 0 ? Math.min(100, (paid / principal) * 100) : 0;
+                return (
+                  <Link key={l.id} to="/accounts/$accountId" params={{ accountId: l.id }} className="block">
+                    <div className="rounded-md border p-3 transition hover:border-primary/50 hover:bg-muted">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="truncate text-sm font-medium">{l.name}</div>
+                        <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">{accountTypeLabel[l.type]}</span>
+                      </div>
+                      <div className="mt-1 text-lg font-semibold text-red-500">{fmtEUR(remaining)}</div>
+                      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                        <div className="h-full rounded-full bg-emerald-500" style={{ width: `${pct}%` }} />
+                      </div>
+                      <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
+                        <span>Getilgt {fmtEUR(paid)}</span>
+                        <span>{pct.toFixed(0)}%</span>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </Card>
+
+          <Card className="p-4 lg:col-span-2">
+            <div className="mb-3 flex items-baseline justify-between gap-2">
+              <div>
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">Verlauf der Kredite</div>
+                <div className="text-sm font-medium">Restschuld über Zeit</div>
+              </div>
+              <div className="text-xs text-muted-foreground">Gesamt: <span className="font-semibold text-red-500">{fmtEUR(remainingDebt)}</span></div>
+            </div>
+            <div className="h-80 w-full">
+              {loanSeries.data.length === 0 ? (
+                <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                  Noch keine Kreditbewegungen.
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={loanSeries.data} margin={{ top: 10, right: 20, left: 10, bottom: 20 }}>
+                    <CartesianGrid stroke="hsl(var(--muted))" strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="label" tick={{ fontSize: 12 }} tickMargin={8} />
+                    <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} width={50} />
+                    <Tooltip formatter={(v: number) => fmtEUR(v)} />
+                    <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+                    {loanSeries.keys.map((k, i) => (
+                      <Line
+                        key={k.id}
+                        type="monotone"
+                        dataKey={k.id}
+                        name={k.name}
+                        stroke={LOAN_COLORS[i % LOAN_COLORS.length]}
+                        strokeWidth={2}
+                        dot={false}
+                        activeDot={{ r: 4 }}
+                      />
+                    ))}
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
+
+const LOAN_COLORS = ["#ef4444", "#f59e0b", "#8b5cf6", "#06b6d4", "#ec4899", "#10b981"];
 
 function KpiCard({
   label,
