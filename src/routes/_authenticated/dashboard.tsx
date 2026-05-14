@@ -175,7 +175,7 @@ function DashboardPage() {
       }
       const point: Record<string, number | string> = { month, label: fmtMonth(month + "-01") };
       for (const l of loans) point[l.id] = remaining.get(l.id) ?? 0;
-      if (month >= fromMonth && month <= toMonth) points.push(point);
+      points.push(point);
     }
 
     return {
