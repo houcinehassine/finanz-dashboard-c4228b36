@@ -175,6 +175,20 @@ function TransactionsPage() {
                 .map((c) => <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>)}
             </SelectContent>
           </Select>
+          <Select value={filterMonth} onValueChange={setFilterMonth}>
+            <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Alle Monate</SelectItem>
+              {MONTHS_DE.map((m, i) => <SelectItem key={m} value={String(i + 1)}>{m}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={filterYear} onValueChange={setFilterYear}>
+            <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Alle Jahre</SelectItem>
+              {YEARS.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+            </SelectContent>
+          </Select>
           <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
             <DialogTrigger asChild>
               <Button onClick={() => setEditing(null)}><Plus className="mr-2 h-4 w-4" />{newLabel}</Button>
@@ -184,37 +198,18 @@ function TransactionsPage() {
         </div>
       </div>
 
-      <div className="grid gap-3 lg:grid-cols-[1fr_auto]">
+      <div className="space-y-2">
         <div className={ymActive ? "opacity-60" : ""}>
           <DateRangePicker value={range} onChange={setRange} />
         </div>
-        <Card className="space-y-3 p-3">
-          <div className="text-sm text-muted-foreground">Monat / Jahr</div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Select value={filterMonth} onValueChange={setFilterMonth}>
-              <SelectTrigger className="h-9 w-36"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Alle Monate</SelectItem>
-                {MONTHS_DE.map((m, i) => <SelectItem key={m} value={String(i + 1)}>{m}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select value={filterYear} onValueChange={setFilterYear}>
-              <SelectTrigger className="h-9 w-28"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Alle Jahre</SelectItem>
-                {YEARS.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            {ymActive && (
-              <Button variant="ghost" size="sm" onClick={() => { setFilterYear("all"); setFilterMonth("all"); }}>
-                Zurücksetzen
-              </Button>
-            )}
+        {ymActive && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span>Monat/Jahr-Filter überschreibt den Zeitraum.</span>
+            <Button variant="ghost" size="sm" onClick={() => { setFilterYear("all"); setFilterMonth("all"); }}>
+              Zurücksetzen
+            </Button>
           </div>
-          {ymActive && (
-            <p className="text-xs text-muted-foreground">Überschreibt den Zeitraum-Filter.</p>
-          )}
-        </Card>
+        )}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
