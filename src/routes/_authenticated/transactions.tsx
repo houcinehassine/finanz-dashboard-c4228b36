@@ -412,7 +412,7 @@ function BulkEditDialog({ open, onOpenChange, ids, onDone }: { open: boolean; on
       return;
     }
     setBusy(true);
-    const { error } = await supabase.from("transactions").update(patch).in("id", ids);
+    const { error } = await (supabase.from("transactions") as any).update(patch).in("id", ids);
     setBusy(false);
     if (error) { toast.error(error.message); return; }
     toast.success(`${ids.length} aktualisiert`);
