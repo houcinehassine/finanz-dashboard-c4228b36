@@ -93,11 +93,13 @@ function RecurringPage() {
   const dueItems = useMemo(() => {
     const txs = allTx.data ?? [];
     const out: { rule: RecurringRule; date: string }[] = [];
+    const norm = (s: string | null | undefined) => (s ?? "").trim().toLowerCase();
     for (const r of items) {
       if (!r.active) continue;
       const dom = r.day_of_month ?? (Number((r.start_on || "").slice(8, 10)) || 1);
       const start = new Date(r.start_on);
       const end = r.end_on ? new Date(r.end_on) : null;
+      const ruleName = norm(r.name || r.note);
       // first occurrence on/after start matching dom
       let cur = new Date(start.getFullYear(), start.getMonth(), dom);
       if (cur < start) {
@@ -109,13 +111,16 @@ function RecurringPage() {
       while (cur <= today && (!end || cur <= end) && guard < 240) {
         const pad = (n: number) => (n < 10 ? `0${n}` : String(n));
         const dStr = `${cur.getFullYear()}-${pad(cur.getMonth() + 1)}-${pad(cur.getDate())}`;
-        const exists = txs.some((t) =>
-          t.account_id === r.account_id &&
-          t.kind === r.kind &&
-          Math.abs(Number(t.amount) - Number(r.amount)) < 0.005 &&
-          t.occurred_on === dStr &&
-          (t.loan_account_id ?? null) === (r.loan_account_id ?? null)
-        );
+        const ym = dStr.slice(0, 7);
+        const exists = txs.some((t) => {
+          if (t.kind !== r.kind) return false;
+          if ((t.occurred_on || "").slice(0, 7) !== ym) return false;
+          const sameAccount = t.account_id === r.account_id || (r.loan_account_id && t.loan_account_id === r.loan_account_id);
+          if (!sameAccount) return false;
+          const sameCat = (t.category_id ?? null) === (r.category_id ?? null);
+          const sameName = ruleName.length > 0 && norm(t.note) === ruleName;
+          return sameCat && (sameName || ruleName.length === 0);
+        });
         if (!exists) out.push({ rule: r, date: dStr });
         if (r.frequency === "monthly") cur.setMonth(cur.getMonth() + 1);
         else if (r.frequency === "quarterly") cur.setMonth(cur.getMonth() + 3);
