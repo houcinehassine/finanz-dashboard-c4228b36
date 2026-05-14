@@ -153,6 +153,8 @@ function RecurringPage() {
     if (error) toast.error(error.message);
     else { toast.success(r.archived ? "Wiederhergestellt" : "Archiviert"); refresh(); }
   };
+
+  const onBookOccurrence = async (r: RecurringRule, date: string) => {
     if (!user) return;
     const key = `${r.id}:${date}`;
     setBookingKey(key);
