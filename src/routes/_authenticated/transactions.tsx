@@ -297,11 +297,16 @@ function TransactionDialog({ tx, defaultKind, onClose }: { tx: Transaction | nul
     e.preventDefault();
     if (!user || !accountId) { toast.error("Bitte Konto wählen"); return; }
     setBusy(true);
+    // If the chosen account is a clearing account with a linked loan, auto-link it
+    let finalLoan = loanAccountId && loanAccountId !== "none" ? loanAccountId : null;
+    if (!finalLoan && selectedAccount?.type === "clearing" && selectedAccount.linked_loan_account_id) {
+      finalLoan = selectedAccount.linked_loan_account_id;
+    }
     const payload = {
       user_id: user.id,
       account_id: accountId,
       category_id: categoryId || null,
-      loan_account_id: loanAccountId && loanAccountId !== "none" ? loanAccountId : null,
+      loan_account_id: finalLoan,
       kind,
       amount: Number(amount) || 0,
       occurred_on: date,
