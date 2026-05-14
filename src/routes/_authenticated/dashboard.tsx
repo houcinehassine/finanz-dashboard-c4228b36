@@ -86,6 +86,58 @@ function DashboardPage() {
 
   const periodLabel = rangeLabel(range);
 
+  const loanSeries = useMemo<{
+    keys: { id: string; name: string }[];
+    data: Array<Record<string, number | string>>;
+  }>(() => {
+    if (loans.length === 0 || !allTxs.data) return { keys: [], data: [] };
+    const loanIds = new Set(loans.map((l) => l.id));
+    const relevant = allTxs.data
+      .filter((t) => loanIds.has(t.account_id) || (t.loan_account_id && loanIds.has(t.loan_account_id)))
+      .slice()
+      .sort((a, b) => a.occurred_on.localeCompare(b.occurred_on));
+    if (relevant.length === 0) return { keys: [], data: [] };
+
+    // Running remaining-debt per loan, snapshotted per month
+    const remaining = new Map<string, number>();
+    for (const l of loans) remaining.set(l.id, Math.max(0, -l.starting_balance));
+
+    const months = new Set<string>();
+    for (const t of relevant) months.add(t.occurred_on.slice(0, 7));
+    const today = new Date().toISOString().slice(0, 7);
+    months.add(today);
+    const sortedMonths = Array.from(months).sort();
+
+    const points: Array<Record<string, number | string>> = [];
+    let idx = 0;
+    for (const month of sortedMonths) {
+      while (idx < relevant.length && relevant[idx].occurred_on.slice(0, 7) <= month) {
+        const t = relevant[idx];
+        // Direct on the loan account
+        if (loanIds.has(t.account_id)) {
+          const cur = remaining.get(t.account_id) ?? 0;
+          // expense on a loan = increase debt; income on a loan = decrease debt
+          remaining.set(t.account_id, Math.max(0, cur + (t.kind === "expense" ? t.amount : -t.amount)));
+        }
+        // Linked principal payment from another account
+        if (t.loan_account_id && loanIds.has(t.loan_account_id)) {
+          const cur = remaining.get(t.loan_account_id) ?? 0;
+          remaining.set(t.loan_account_id, Math.max(0, cur - t.amount));
+        }
+        idx++;
+      }
+      const point: Record<string, number | string> = { month, label: fmtMonth(month + "-01") };
+      for (const l of loans) point[l.id] = remaining.get(l.id) ?? 0;
+      points.push(point);
+    }
+
+    return {
+      keys: loans.map((l) => ({ id: l.id, name: l.name })),
+      data: points,
+    };
+  }, [loans, allTxs.data]);
+
+
   return (
     <div className="space-y-6">
       <div>
