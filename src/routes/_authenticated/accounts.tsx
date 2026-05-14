@@ -47,6 +47,7 @@ function AccountsPage() {
   const bank = all.filter((a) => a.type === "checking" || a.type === "savings");
   const cards = all.filter((a) => a.type === "credit_card");
   const loans = all.filter((a) => a.type === "loan");
+  const darlehen = all.filter((a) => a.type === "darlehen");
 
   const newOf = (t: Account["type"]) => {
     setEditing({ type: t });
