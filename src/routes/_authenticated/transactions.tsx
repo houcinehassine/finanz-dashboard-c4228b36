@@ -182,9 +182,11 @@ function TransactionDialog({ tx, defaultKind, onClose }: { tx: Transaction | nul
   const [amount, setAmount] = useState(tx ? String(tx.amount) : "");
   const [date, setDate] = useState(tx?.occurred_on ?? new Date().toISOString().slice(0, 10));
   const [note, setNote] = useState(tx?.note ?? "");
+  const [loanAccountId, setLoanAccountId] = useState<string>(tx?.loan_account_id ?? "none");
   const [busy, setBusy] = useState(false);
 
   const filteredCats = (categories.data ?? []).filter((c) => c.kind === kind);
+  const loanAccounts = (accounts.data ?? []).filter((a) => a.type === "loan" || a.type === "credit_card");
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -194,6 +196,7 @@ function TransactionDialog({ tx, defaultKind, onClose }: { tx: Transaction | nul
       user_id: user.id,
       account_id: accountId,
       category_id: categoryId || null,
+      loan_account_id: loanAccountId && loanAccountId !== "none" ? loanAccountId : null,
       kind,
       amount: Number(amount) || 0,
       occurred_on: date,
