@@ -358,22 +358,22 @@ function TransactionDialog({ tx, defaultKind, onClose }: { tx: Transaction | nul
           <Input value={note} onChange={(e) => setNote(e.target.value)} />
         </div>
         <div>
-          <Label>Verknüpfter Kredit / Kreditkarte (optional)</Label>
+          <Label>Verknüpfter Kredit / Kreditkarte / Darlehen (optional)</Label>
           <Select value={loanAccountId} onValueChange={setLoanAccountId}>
             <SelectTrigger><SelectValue placeholder="Keiner" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="none">Keiner</SelectItem>
               {loanAccounts.map((a) => (
                 <SelectItem key={a.id} value={a.id}>
-                  {a.type === "credit_card" ? "💳" : "🏦"} {a.name}
+                  {loanIcon(a.type)} {loanLabel(a.type)}: {a.name}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
           <p className="mt-1 text-xs text-muted-foreground">
             {kind === "income"
-              ? "Z.B. wenn diese Einnahme eine Kreditauszahlung ist."
-              : "Z.B. wenn diese Ausgabe eine Rate / Tilgung für einen Kredit oder eine Kreditkarten-Zahlung ist."}
+              ? "Z.B. wenn diese Einnahme eine Kredit- oder Darlehensauszahlung ist."
+              : "Z.B. wenn diese Ausgabe eine Rate / Tilgung für einen Kredit, ein Darlehen oder eine Kreditkarten-Zahlung ist."}
           </p>
         </div>
         <Button type="submit" className="w-full" disabled={busy}>Speichern</Button>
