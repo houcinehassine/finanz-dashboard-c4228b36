@@ -121,6 +121,7 @@ export type Database = {
           id: string
           kind: Database["public"]["Enums"]["transaction_kind"]
           last_booked_on: string | null
+          loan_account_id: string | null
           next_due_on: string
           note: string | null
           start_on: string
@@ -136,6 +137,7 @@ export type Database = {
           id?: string
           kind?: Database["public"]["Enums"]["transaction_kind"]
           last_booked_on?: string | null
+          loan_account_id?: string | null
           next_due_on: string
           note?: string | null
           start_on?: string
@@ -151,12 +153,28 @@ export type Database = {
           id?: string
           kind?: Database["public"]["Enums"]["transaction_kind"]
           last_booked_on?: string | null
+          loan_account_id?: string | null
           next_due_on?: string
           note?: string | null
           start_on?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "recurring_rules_loan_account_id_fkey"
+            columns: ["loan_account_id"]
+            isOneToOne: false
+            referencedRelation: "account_balances"
+            referencedColumns: ["account_id"]
+          },
+          {
+            foreignKeyName: "recurring_rules_loan_account_id_fkey"
+            columns: ["loan_account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       transactions: {
         Row: {
