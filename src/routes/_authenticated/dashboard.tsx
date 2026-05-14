@@ -3,8 +3,8 @@ import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { useAccountBalances, useMonthlySummary, useTransactions, useCategories } from "@/lib/queries";
 import { fmtEUR, fmtMonth, accountTypeLabel } from "@/lib/format";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
-import { TrendingUp, TrendingDown, Wallet } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, RadialBarChart, RadialBar, PolarAngleAxis } from "recharts";
+import { TrendingUp, TrendingDown, Wallet, CreditCard } from "lucide-react";
 import { DateRangePicker, DEFAULT_RANGE, rangeLabel, rangeToFromTo, type RangeValue } from "@/components/DateRangePicker";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
