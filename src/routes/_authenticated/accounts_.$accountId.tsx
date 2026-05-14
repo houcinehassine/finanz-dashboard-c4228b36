@@ -15,8 +15,6 @@ export const Route = createFileRoute("/_authenticated/accounts_/$accountId")({
 
 function AccountDetailPage() {
   const { accountId } = Route.useParams();
-  const [range, setRange] = useState<RangeValue>(DEFAULT_RANGE);
-  const { from, to } = useMemo(() => rangeToFromTo(range), [range]);
   const balances = useAccountBalances();
   const cats = useCategories();
   const account = (balances.data ?? []).find((a) => a.id === accountId);
