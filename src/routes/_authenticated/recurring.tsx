@@ -98,7 +98,7 @@ function RecurringPage() {
     const out: { rule: RecurringRule; date: string }[] = [];
     const norm = (s: string | null | undefined) => (s ?? "").trim().toLowerCase();
     for (const r of items) {
-      if (!r.active) continue;
+      if (!r.active || r.archived) continue;
       const dom = r.day_of_month ?? (Number((r.start_on || "").slice(8, 10)) || 1);
       const start = new Date(r.start_on);
       const end = r.end_on ? new Date(r.end_on) : null;
