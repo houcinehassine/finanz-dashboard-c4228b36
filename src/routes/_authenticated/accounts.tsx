@@ -24,7 +24,6 @@ function AccountsPage() {
   const qc = useQueryClient();
   const [editing, setEditing] = useState<Partial<Account> | null>(null);
   const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState<"bank" | "credit_card" | "loan">("bank");
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["accounts"] });
