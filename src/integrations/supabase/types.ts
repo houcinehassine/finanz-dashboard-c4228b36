@@ -127,6 +127,7 @@ export type Database = {
           account_id: string
           active: boolean
           amount: number
+          archived: boolean
           category_id: string | null
           created_at: string
           day_of_month: number | null
@@ -146,6 +147,7 @@ export type Database = {
           account_id: string
           active?: boolean
           amount: number
+          archived?: boolean
           category_id?: string | null
           created_at?: string
           day_of_month?: number | null
@@ -165,6 +167,7 @@ export type Database = {
           account_id?: string
           active?: boolean
           amount?: number
+          archived?: boolean
           category_id?: string | null
           created_at?: string
           day_of_month?: number | null
