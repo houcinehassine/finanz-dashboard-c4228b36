@@ -7,8 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/integrations/supabase/client";
-import { LogOut, User, Globe, FileUp, ListChecks, Tags } from "lucide-react";
+import { LogOut, User, Globe, FileUp, ListChecks, Tags, Sun, Moon } from "lucide-react";
 import { CategoriesManager } from "@/components/CategoriesManager";
+import { usePreferences } from "@/lib/preferences";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   component: SettingsPage,
