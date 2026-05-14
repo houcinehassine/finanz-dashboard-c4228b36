@@ -273,6 +273,7 @@ function AccountDialog({ account, onClose }: { account: Partial<Account> | null;
               <SelectItem value="savings">Sparkonto</SelectItem>
               <SelectItem value="credit_card">Kreditkarte</SelectItem>
               <SelectItem value="loan">Kredit</SelectItem>
+              <SelectItem value="darlehen">Darlehen (zinsfrei)</SelectItem>
             </SelectContent>
           </Select>
         </div>
