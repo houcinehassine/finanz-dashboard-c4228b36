@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth-context";
 export type Account = {
   id: string;
   name: string;
-  type: "checking" | "savings" | "credit_card" | "loan" | "darlehen";
+  type: "checking" | "savings" | "credit_card" | "loan" | "darlehen" | "clearing";
   starting_balance: number;
   archived: boolean;
   icon: string;
@@ -14,6 +14,8 @@ export type Account = {
   loan_interest_rate: number | null;
   loan_term_months: number | null;
   loan_due_on: string | null;
+  is_liquid: boolean;
+  linked_loan_account_id: string | null;
 };
 
 export type AccountBalance = Account & { balance: number };
