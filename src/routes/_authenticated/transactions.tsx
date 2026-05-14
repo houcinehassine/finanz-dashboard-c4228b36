@@ -335,14 +335,18 @@ function TransactionDialog({ tx, defaultKind, onClose }: { tx: Transaction | nul
           </Select>
         </div>
         <div>
-          <Label>Bankkonto (Pflicht)</Label>
+          <Label>Konto (Pflicht)</Label>
           <Select value={accountId} onValueChange={setAccountId}>
             <SelectTrigger><SelectValue placeholder="Konto wählen" /></SelectTrigger>
             <SelectContent>
-              {bankAccounts.map((a) => <SelectItem key={a.id} value={a.id}>🏦 {a.name}</SelectItem>)}
+              {bankAccounts.map((a) => <SelectItem key={a.id} value={a.id}>{effectiveAccountIcon(a)} {a.name}{a.type === "clearing" ? " (Verrechnung)" : ""}</SelectItem>)}
             </SelectContent>
           </Select>
-          <p className="mt-1 text-xs text-muted-foreground">Geld fließt von / zu diesem Bankkonto.</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {selectedAccount?.type === "clearing"
+              ? "Verrechnungskonto: zählt nicht zur Liquidität, beeinflusst aber den verknüpften Kredit."
+              : "Geld fließt von / zu diesem Bankkonto."}
+          </p>
         </div>
         <div>
           <Label>Kategorie</Label>
