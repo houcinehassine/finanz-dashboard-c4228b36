@@ -111,7 +111,7 @@ function TransactionsPage() {
       loan_account_id: t.loan_account_id,
       kind: t.kind,
       amount: t.amount,
-      occurred_on: new Date().toISOString().slice(0, 10),
+      occurred_on: t.occurred_on,
       note: t.note,
       interest_amount: t.interest_amount,
       is_anyfin: t.is_anyfin,
