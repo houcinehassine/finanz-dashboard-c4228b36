@@ -28,10 +28,12 @@ function TransactionsPage() {
   const categories = useCategories();
   const [view, setView] = useState<ViewKind>("all");
   const [filterAccount, setFilterAccount] = useState<string>("all");
+  const [filterCategory, setFilterCategory] = useState<string>("all");
   const [range, setRange] = useState<RangeValue>(DEFAULT_RANGE);
   const { from, to } = useMemo(() => rangeToFromTo(range), [range]);
   const txs = useTransactions({
     accountId: filterAccount === "all" ? undefined : filterAccount,
+    categoryId: filterCategory === "all" ? undefined : filterCategory,
     from,
     to,
   });
