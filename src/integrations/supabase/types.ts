@@ -19,6 +19,7 @@ export type Database = {
           archived: boolean
           created_at: string
           credit_limit: number | null
+          icon: string
           id: string
           loan_interest_rate: number | null
           loan_principal: number | null
@@ -32,6 +33,7 @@ export type Database = {
           archived?: boolean
           created_at?: string
           credit_limit?: number | null
+          icon?: string
           id?: string
           loan_interest_rate?: number | null
           loan_principal?: number | null
@@ -45,6 +47,7 @@ export type Database = {
           archived?: boolean
           created_at?: string
           credit_limit?: number | null
+          icon?: string
           id?: string
           loan_interest_rate?: number | null
           loan_principal?: number | null
