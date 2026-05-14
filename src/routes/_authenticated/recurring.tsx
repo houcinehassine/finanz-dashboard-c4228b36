@@ -14,7 +14,8 @@ import { useAccounts, useCategories, useTransactions } from "@/lib/queries";
 import { fmtEUR, fmtDate } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { Plus, Pencil, Trash2, Repeat, Zap } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, Pencil, Trash2, Repeat, Zap, Archive, ArchiveRestore } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/recurring")({
