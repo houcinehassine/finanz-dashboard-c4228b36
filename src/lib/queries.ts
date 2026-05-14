@@ -23,6 +23,7 @@ export type Category = {
   color: string;
   icon: string;
   archived: boolean;
+  is_system: boolean;
 };
 
 export type Transaction = {
