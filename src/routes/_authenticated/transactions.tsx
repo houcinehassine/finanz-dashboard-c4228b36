@@ -80,12 +80,13 @@ function TransactionsPage() {
     [txs.data, view],
   );
   const totals = useMemo(() => {
-    let income = 0, expense = 0;
+    let income = 0, expense = 0, transfers = 0;
     for (const t of filtered) {
       if (t.kind === "income") income += Number(t.amount);
-      else expense += Number(t.amount);
+      else if (t.kind === "expense") expense += Number(t.amount);
+      else transfers += Number(t.amount);
     }
-    return { income, expense, net: income - expense };
+    return { income, expense, transfers, net: income - expense };
   }, [filtered]);
 
   const refresh = () => {
