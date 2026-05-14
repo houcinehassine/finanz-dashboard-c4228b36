@@ -93,7 +93,7 @@ function TransactionsPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <DateRangePicker value={range} onChange={setRange} />
         <Card className="p-5">
           <div className="text-xs uppercase tracking-widest text-muted-foreground">{title}</div>
           <div className={`mt-2 text-3xl font-bold ${amountTone}`}>{fmtEUR(total)}</div>
