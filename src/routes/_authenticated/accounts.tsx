@@ -134,10 +134,15 @@ function AccountGrid({
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {items.map((a) => (
         <Card key={a.id} className={`p-4 transition hover:border-primary/50 ${a.archived ? "opacity-60" : ""}`}>
-          <div className="flex items-start justify-between">
-            <Link to="/accounts/$accountId" params={{ accountId: a.id }} className="min-w-0 flex-1">
-              <div className="text-xs text-muted-foreground">{accountTypeLabel[a.type]}</div>
-              <div className="truncate font-medium hover:underline">{a.name}</div>
+          <div className="flex items-start justify-between gap-2">
+            <Link to="/accounts/$accountId" params={{ accountId: a.id }} className="flex min-w-0 flex-1 items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-xl">
+                {a.icon || "🏦"}
+              </span>
+              <div className="min-w-0">
+                <div className="text-xs text-muted-foreground">{accountTypeLabel[a.type]}</div>
+                <div className="truncate font-medium hover:underline">{a.name}</div>
+              </div>
             </Link>
             <div className="flex gap-1">
               <Button size="icon" variant="ghost" onClick={() => onEdit(a)}>
