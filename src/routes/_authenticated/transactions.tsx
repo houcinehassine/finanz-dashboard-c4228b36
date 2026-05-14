@@ -5,6 +5,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useAccounts, useCategories, useTransactions, type Transaction } from "@/lib/queries";
@@ -18,14 +20,15 @@ export const Route = createFileRoute("/_authenticated/transactions")({
   component: TransactionsPage,
 });
 
+type ViewKind = "expense" | "income";
+
 function TransactionsPage() {
   const accounts = useAccounts();
   const categories = useCategories();
+  const [view, setView] = useState<ViewKind>("expense");
   const [filterAccount, setFilterAccount] = useState<string>("all");
-  const [filterCategory, setFilterCategory] = useState<string>("all");
   const txs = useTransactions({
     accountId: filterAccount === "all" ? undefined : filterAccount,
-    categoryId: filterCategory === "all" ? undefined : filterCategory,
   });
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -33,6 +36,9 @@ function TransactionsPage() {
 
   const accountById = useMemo(() => Object.fromEntries((accounts.data ?? []).map((a) => [a.id, a])), [accounts.data]);
   const catById = useMemo(() => Object.fromEntries((categories.data ?? []).map((c) => [c.id, c])), [categories.data]);
+
+  const filtered = useMemo(() => (txs.data ?? []).filter((t) => t.kind === view), [txs.data, view]);
+  const total = useMemo(() => filtered.reduce((s, t) => s + Number(t.amount), 0), [filtered]);
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["transactions"] });
@@ -46,89 +52,122 @@ function TransactionsPage() {
     else { toast.success("Gelöscht"); refresh(); }
   };
 
+  const isExpense = view === "expense";
+  const title = isExpense ? "Ausgaben" : "Einnahmen";
+  const newLabel = isExpense ? "Neue Ausgabe" : "Neue Einnahme";
+  const amountTone = isExpense ? "text-red-500" : "text-emerald-500";
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Transaktionen</h1>
-          <p className="text-sm text-muted-foreground">Einnahmen und Ausgaben</p>
+          <div className="text-xs uppercase tracking-widest text-muted-foreground">Transaktionen</div>
+          <h1 className="text-3xl font-bold">{title}</h1>
         </div>
-        <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
-          <DialogTrigger asChild>
-            <Button onClick={() => setEditing(null)}><Plus className="mr-2 h-4 w-4" />Neu</Button>
-          </DialogTrigger>
-          <TransactionDialog key={editing?.id ?? "new"} tx={editing} onClose={() => { setOpen(false); setEditing(null); refresh(); }} />
-        </Dialog>
+        <div className="flex items-center gap-2">
+          <Select value={view} onValueChange={(v) => setView(v as ViewKind)}>
+            <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="expense">Ausgaben</SelectItem>
+              <SelectItem value="income">Einnahmen</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={filterAccount} onValueChange={setFilterAccount}>
+            <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Alle Konten</SelectItem>
+              {(accounts.data ?? []).map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
+            <DialogTrigger asChild>
+              <Button onClick={() => setEditing(null)}><Plus className="mr-2 h-4 w-4" />{newLabel}</Button>
+            </DialogTrigger>
+            <TransactionDialog key={editing?.id ?? "new"} tx={editing} defaultKind={view} onClose={() => { setOpen(false); setEditing(null); refresh(); }} />
+          </Dialog>
+        </div>
       </div>
 
-      <Card className="p-3">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <Label className="text-xs">Konto</Label>
-            <Select value={filterAccount} onValueChange={setFilterAccount}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Alle Konten</SelectItem>
-                {(accounts.data ?? []).map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label className="text-xs">Kategorie</Label>
-            <Select value={filterCategory} onValueChange={setFilterCategory}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Alle Kategorien</SelectItem>
-                {(categories.data ?? []).map((c) => <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Card className="p-5">
+          <div className="text-xs uppercase tracking-widest text-muted-foreground">{title}</div>
+          <div className={`mt-2 text-3xl font-bold ${amountTone}`}>{fmtEUR(total)}</div>
+        </Card>
+        <Card className="p-5">
+          <div className="text-xs uppercase tracking-widest text-muted-foreground">Anzahl</div>
+          <div className="mt-2 text-3xl font-bold">{filtered.length}</div>
+        </Card>
+      </div>
+
+      <Card className="overflow-hidden p-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="text-xs uppercase tracking-wider">Datum</TableHead>
+              <TableHead className="text-xs uppercase tracking-wider">Beschreibung</TableHead>
+              <TableHead className="text-xs uppercase tracking-wider">Kategorie</TableHead>
+              <TableHead className="text-xs uppercase tracking-wider">Verknüpft mit</TableHead>
+              <TableHead className="text-right text-xs uppercase tracking-wider">Betrag</TableHead>
+              <TableHead className="text-right text-xs uppercase tracking-wider">Aktionen</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filtered.map((t) => {
+              const cat = t.category_id ? catById[t.category_id] : null;
+              const acc = accountById[t.account_id];
+              return (
+                <TableRow key={t.id}>
+                  <TableCell className="whitespace-nowrap text-muted-foreground">{fmtDate(t.occurred_on)}</TableCell>
+                  <TableCell className="font-medium">{t.note ?? (cat?.name ?? "—")}</TableCell>
+                  <TableCell>
+                    {cat ? (
+                      <Badge
+                        variant="secondary"
+                        style={{ backgroundColor: `${cat.color}20`, color: cat.color, borderColor: `${cat.color}40` }}
+                      >
+                        {cat.icon} {cat.name}
+                      </Badge>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {acc ? (
+                      <span className="text-sm">
+                        <span className="text-muted-foreground">Konto: </span>
+                        <span className="font-medium">{acc.name}</span>
+                      </span>
+                    ) : "—"}
+                  </TableCell>
+                  <TableCell className={`text-right font-semibold ${amountTone}`}>
+                    {isExpense ? "−" : "+"}{fmtEUR(Number(t.amount))}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button size="icon" variant="ghost" onClick={() => { setEditing(t); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="ghost" onClick={() => onDelete(t.id)}><Trash2 className="h-4 w-4" /></Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+            {filtered.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={6} className="py-10 text-center text-sm text-muted-foreground">
+                  Noch keine {title.toLowerCase()}.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
       </Card>
-
-      <div className="space-y-2">
-        {(txs.data ?? []).map((t) => {
-          const cat = t.category_id ? catById[t.category_id] : null;
-          const acc = accountById[t.account_id];
-          return (
-            <Card key={t.id} className="flex items-center justify-between p-3">
-              <div className="flex items-center gap-3">
-                <div
-                  className="flex h-10 w-10 items-center justify-center rounded-md text-lg"
-                  style={{ backgroundColor: `${cat?.color ?? "#94a3b8"}20` }}
-                >
-                  {cat?.icon ?? (t.kind === "income" ? "💰" : "💸")}
-                </div>
-                <div>
-                  <div className="font-medium">{cat?.name ?? "Ohne Kategorie"}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {acc?.name ?? "—"} · {fmtDate(t.occurred_on)}{t.note ? ` · ${t.note}` : ""}
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className={`font-semibold ${t.kind === "income" ? "text-emerald-600" : "text-red-600"}`}>
-                  {t.kind === "income" ? "+" : "−"}{fmtEUR(t.amount)}
-                </span>
-                <Button size="icon" variant="ghost" onClick={() => { setEditing(t); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
-                <Button size="icon" variant="ghost" onClick={() => onDelete(t.id)}><Trash2 className="h-4 w-4" /></Button>
-              </div>
-            </Card>
-          );
-        })}
-        {txs.data?.length === 0 && (
-          <Card className="p-6 text-center text-sm text-muted-foreground">Noch keine Transaktionen.</Card>
-        )}
-      </div>
     </div>
   );
 }
 
-function TransactionDialog({ tx, onClose }: { tx: Transaction | null; onClose: () => void }) {
+function TransactionDialog({ tx, defaultKind, onClose }: { tx: Transaction | null; defaultKind?: Transaction["kind"]; onClose: () => void }) {
   const { user } = useAuth();
   const accounts = useAccounts();
   const categories = useCategories();
-  const [kind, setKind] = useState<Transaction["kind"]>(tx?.kind ?? "expense");
+  const [kind, setKind] = useState<Transaction["kind"]>(tx?.kind ?? defaultKind ?? "expense");
   const [accountId, setAccountId] = useState<string>(tx?.account_id ?? "");
   const [categoryId, setCategoryId] = useState<string>(tx?.category_id ?? "");
   const [amount, setAmount] = useState(tx ? String(tx.amount) : "");
@@ -202,7 +241,7 @@ function TransactionDialog({ tx, onClose }: { tx: Transaction | null; onClose: (
           </div>
         </div>
         <div>
-          <Label>Notiz</Label>
+          <Label>Beschreibung</Label>
           <Input value={note} onChange={(e) => setNote(e.target.value)} />
         </div>
         <Button type="submit" className="w-full" disabled={busy}>Speichern</Button>
