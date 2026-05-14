@@ -1,10 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
-import { useAccountBalances, useMonthlySummary, useTransactions, useCategories } from "@/lib/queries";
+import { useAccountBalances, useTransactions, useCategories } from "@/lib/queries";
 import { fmtEUR, fmtMonth, accountTypeLabel } from "@/lib/format";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, RadialBarChart, RadialBar, PolarAngleAxis } from "recharts";
-import { TrendingUp, TrendingDown, Wallet, CreditCard } from "lucide-react";
+import { TrendingUp, TrendingDown, Wallet, CreditCard, PiggyBank, Landmark } from "lucide-react";
 import { DateRangePicker, DEFAULT_RANGE, rangeLabel, rangeToFromTo, type RangeValue } from "@/components/DateRangePicker";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -17,14 +17,13 @@ function DashboardPage() {
   const { from, to } = useMemo(() => rangeToFromTo(range), [range]);
 
   const balances = useAccountBalances();
-  const monthly = useMonthlySummary();
   const txs = useTransactions({ from, to });
   const cats = useCategories();
 
   const monthlyInRange = useMemo(() => {
     const map = new Map<string, { month: string; income: number; expense: number }>();
     for (const t of txs.data ?? []) {
-      const key = t.occurred_on.slice(0, 7); // YYYY-MM
+      const key = t.occurred_on.slice(0, 7);
       const cur = map.get(key) ?? { month: key, income: 0, expense: 0 };
       if (t.kind === "income") cur.income += Number(t.amount);
       else cur.expense += Number(t.amount);
@@ -34,7 +33,6 @@ function DashboardPage() {
       .sort((a, b) => a.month.localeCompare(b.month))
       .map((r) => ({ ...r, label: fmtMonth(r.month), net: r.income - r.expense }));
   }, [txs.data]);
-  void monthly;
 
   const periodTotals = useMemo(() => {
     let income = 0, expense = 0;
@@ -59,12 +57,32 @@ function DashboardPage() {
     return Array.from(map.values());
   }, [txs.data, cats.data]);
 
-  const creditCards = useMemo(
-    () => (balances.data ?? []).filter((a) => !a.archived && a.type === "credit_card"),
+  const activeAccounts = useMemo(
+    () => (balances.data ?? []).filter((a) => !a.archived),
     [balances.data],
   );
+  const bankAccounts = useMemo(
+    () => activeAccounts.filter((a) => a.type === "checking" || a.type === "savings"),
+    [activeAccounts],
+  );
+  const creditCards = useMemo(
+    () => activeAccounts.filter((a) => a.type === "credit_card"),
+    [activeAccounts],
+  );
+  const loans = useMemo(
+    () => activeAccounts.filter((a) => a.type === "loan"),
+    [activeAccounts],
+  );
 
-  const totalBalance = (balances.data ?? []).filter((a) => !a.archived).reduce((s, a) => s + a.balance, 0);
+  const totalBalance = bankAccounts.reduce((s, a) => s + a.balance, 0);
+  const savingsRate = periodTotals.income > 0 ? (periodTotals.net / periodTotals.income) * 100 : 0;
+  const remainingDebt = loans.reduce((s, a) => s + Math.max(0, -a.balance), 0);
+
+  const cardTotalLimit = creditCards.reduce((s, c) => s + (c.credit_limit ?? 0), 0);
+  const cardTotalUsed = creditCards.reduce((s, c) => s + Math.max(0, -c.balance), 0);
+  const cardPct = cardTotalLimit > 0 ? Math.min(100, (cardTotalUsed / cardTotalLimit) * 100) : 0;
+  const cardColor = cardPct >= 90 ? "#ef4444" : cardPct >= 70 ? "#f59e0b" : "#10b981";
+
   const periodLabel = rangeLabel(range);
 
   return (
@@ -76,57 +94,51 @@ function DashboardPage() {
 
       <DateRangePicker value={range} onChange={setRange} />
 
-      {/* KPIs */}
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Card className="p-4">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Wallet className="h-4 w-4" /> Gesamtsaldo
-          </div>
-          <div className="mt-1 text-2xl font-bold">{fmtEUR(totalBalance)}</div>
-        </Card>
-        <Card className="p-4">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <TrendingUp className="h-4 w-4" /> Einnahmen ({periodLabel})
-          </div>
-          <div className="mt-1 text-2xl font-bold text-emerald-600">{fmtEUR(periodTotals.income)}</div>
-        </Card>
-        <Card className="p-4">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <TrendingDown className="h-4 w-4" /> Ausgaben ({periodLabel})
-          </div>
-          <div className="mt-1 text-2xl font-bold text-red-600">{fmtEUR(periodTotals.expense)}</div>
-        </Card>
+      {/* KPI row — 5 cards */}
+      <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+        <KpiCard
+          label="Gesamtsaldo"
+          value={fmtEUR(totalBalance)}
+          sub={`${bankAccounts.length} Bankkonten`}
+          icon={<Wallet className="h-4 w-4" />}
+          accent="text-foreground"
+        />
+        <KpiCard
+          label={`Einnahmen (${periodLabel})`}
+          value={fmtEUR(periodTotals.income)}
+          icon={<TrendingUp className="h-4 w-4" />}
+          accent="text-emerald-500"
+        />
+        <KpiCard
+          label={`Ausgaben (${periodLabel})`}
+          value={fmtEUR(periodTotals.expense)}
+          icon={<TrendingDown className="h-4 w-4" />}
+          accent="text-red-500"
+        />
+        <KpiCard
+          label="Sparquote"
+          value={`${savingsRate.toFixed(0)}%`}
+          sub={fmtEUR(periodTotals.net)}
+          icon={<PiggyBank className="h-4 w-4" />}
+          accent={savingsRate < 0 ? "text-red-500" : "text-emerald-500"}
+        />
+        <KpiCard
+          label="Restschuld"
+          value={fmtEUR(remainingDebt)}
+          sub={`${loans.length} Aktive Kredite`}
+          icon={<Landmark className="h-4 w-4" />}
+          accent={remainingDebt > 0 ? "text-red-500" : "text-foreground"}
+        />
       </div>
 
-      {/* Account tiles */}
-      <div>
-        <h2 className="mb-2 text-sm font-medium">Konten</h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {(balances.data ?? []).filter((a) => !a.archived).map((a) => (
-            <Link key={a.id} to="/accounts/$accountId" params={{ accountId: a.id }} className="block">
-              <Card className="p-4 transition hover:border-primary/50">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span className="text-base">{a.icon || "🏦"}</span>
-                  {accountTypeLabel[a.type]}
-                </div>
-                <div className="mt-1 font-medium">{a.name}</div>
-                <div className={`mt-2 text-xl font-semibold ${a.balance < 0 ? "text-red-600" : ""}`}>{fmtEUR(a.balance)}</div>
-              </Card>
-            </Link>
-          ))}
-          {balances.data && balances.data.filter((a) => !a.archived).length === 0 && (
-            <Card className="col-span-full p-6 text-center text-sm text-muted-foreground">
-              Noch keine Konten angelegt.
-            </Card>
-          )}
-        </div>
-      </div>
-
-      {/* Charts (stacked, full width for clarity) */}
-      <div className="space-y-4">
-        <Card className="p-4">
+      {/* Row 2: Einnahmen vs Ausgaben (2/3) + Kreditkarten-Auslastung (1/3) */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card className="p-4 lg:col-span-2">
           <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-            <h3 className="text-sm font-medium">Einnahmen vs. Ausgaben ({periodLabel})</h3>
+            <div>
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">Einnahmen vs. Ausgaben</div>
+              <div className="text-sm font-medium">{periodLabel}</div>
+            </div>
             <div className="text-xs text-muted-foreground">
               Netto: <span className={periodTotals.net < 0 ? "text-red-500 font-semibold" : "text-emerald-500 font-semibold"}>{fmtEUR(periodTotals.net)}</span>
             </div>
@@ -152,27 +164,71 @@ function DashboardPage() {
         </Card>
 
         <Card className="p-4">
-          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-            <h3 className="text-sm font-medium">Ausgaben nach Kategorie ({periodLabel})</h3>
-            <div className="text-xs text-muted-foreground">
-              Gesamt: <span className="font-semibold text-red-500">{fmtEUR(periodTotals.expense)}</span>
+          <div className="mb-3">
+            <div className="text-xs uppercase tracking-wide text-muted-foreground">Kreditkarten-Auslastung</div>
+            <div className="text-sm font-medium">{fmtEUR(cardTotalUsed)} / {fmtEUR(cardTotalLimit)}</div>
+          </div>
+          <div className="relative h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <RadialBarChart
+                innerRadius="75%"
+                outerRadius="100%"
+                data={[{ value: cardPct, fill: cardColor }]}
+                startAngle={210}
+                endAngle={-30}
+              >
+                <PolarAngleAxis type="number" domain={[0, 100]} tick={false} />
+                <RadialBar dataKey="value" cornerRadius={8} background={{ fill: "hsl(var(--muted))" }} />
+              </RadialBarChart>
+            </ResponsiveContainer>
+            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+              <div className="text-4xl font-bold">{cardPct.toFixed(0)}%</div>
+              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">verwendet</div>
             </div>
           </div>
+          {creditCards.length > 0 && (
+            <div className="mt-3 space-y-1.5">
+              {creditCards.map((c) => {
+                const limit = c.credit_limit ?? 0;
+                const used = Math.max(0, -c.balance);
+                const pct = limit > 0 ? Math.min(100, (used / limit) * 100) : 0;
+                return (
+                  <Link key={c.id} to="/accounts/$accountId" params={{ accountId: c.id }} className="flex items-center justify-between gap-2 rounded-md border px-2 py-1.5 text-xs transition hover:border-primary/50 hover:bg-muted">
+                    <span className="flex items-center gap-2 truncate">
+                      <CreditCard className="h-3 w-3 shrink-0 text-muted-foreground" />
+                      <span className="truncate">{c.name}</span>
+                    </span>
+                    <span className="shrink-0 tabular-nums text-muted-foreground">{fmtEUR(used)} / {fmtEUR(limit)} <span className="ml-1">({pct.toFixed(0)}%)</span></span>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </Card>
+      </div>
+
+      {/* Row 3: Ausgaben nach Kategorie (1/3) + Bankkonten (2/3) */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card className="p-4">
+          <div className="mb-3 flex items-baseline justify-between gap-2">
+            <div className="text-xs uppercase tracking-wide text-muted-foreground">Ausgaben nach Kategorie</div>
+            <div className="text-xs font-semibold text-red-500">{fmtEUR(periodTotals.expense)}</div>
+          </div>
           {expenseByCat.length === 0 ? (
-            <div className="flex h-80 items-center justify-center text-sm text-muted-foreground">
-              Keine Ausgaben im gewählten Zeitraum.
+            <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
+              Keine Ausgaben.
             </div>
           ) : (
-            <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
-              <div className="h-80 w-full">
+            <>
+              <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
                       data={expenseByCat}
                       dataKey="value"
                       nameKey="name"
-                      innerRadius={70}
-                      outerRadius={120}
+                      innerRadius={55}
+                      outerRadius={95}
                       paddingAngle={2}
                       onClick={(d: any) => setActiveCat((p) => (p === d?.name ? null : d?.name))}
                     >
@@ -191,78 +247,84 @@ function DashboardPage() {
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-              <div className="space-y-1.5 self-center">
+              <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs">
                 {expenseByCat
                   .slice()
                   .sort((a, b) => b.value - a.value)
                   .map((e) => {
-                    const pct = periodTotals.expense > 0 ? (e.value / periodTotals.expense) * 100 : 0;
                     const active = activeCat === e.name;
                     return (
                       <button
                         key={e.name}
                         type="button"
                         onClick={() => setActiveCat((p) => (p === e.name ? null : e.name))}
-                        className={`flex w-full items-center justify-between gap-3 rounded-md border px-2 py-1.5 text-left text-xs transition hover:bg-muted ${active ? "border-primary bg-muted" : "border-transparent"}`}
+                        className={`flex items-center gap-1.5 rounded transition ${active ? "font-semibold" : ""}`}
                       >
-                        <span className="flex items-center gap-2 truncate">
-                          <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: e.color }} />
-                          <span className="truncate">{e.name}</span>
-                        </span>
-                        <span className="shrink-0 tabular-nums text-muted-foreground">
-                          {fmtEUR(e.value)} <span className="ml-1 text-[10px]">({pct.toFixed(0)}%)</span>
-                        </span>
+                        <span className="h-2.5 w-2.5 rounded-sm" style={{ background: e.color }} />
+                        <span className="truncate">{e.name}</span>
                       </button>
                     );
                   })}
               </div>
+            </>
+          )}
+        </Card>
+
+        <Card className="p-4 lg:col-span-2">
+          <div className="mb-3 flex items-center justify-between">
+            <div className="text-xs uppercase tracking-wide text-muted-foreground">Bankkonten</div>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </div>
+          {bankAccounts.length === 0 ? (
+            <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
+              Noch keine Bankkonten.
+            </div>
+          ) : (
+            <div className="grid gap-2 sm:grid-cols-2">
+              {bankAccounts.map((a) => (
+                <Link key={a.id} to="/accounts/$accountId" params={{ accountId: a.id }} className="block">
+                  <div className="rounded-md border p-3 transition hover:border-primary/50 hover:bg-muted">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="truncate text-sm font-medium">{a.name}</div>
+                      <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">{accountTypeLabel[a.type]}</span>
+                    </div>
+                    <div className={`mt-1 text-lg font-semibold ${a.balance < 0 ? "text-red-500" : ""}`}>{fmtEUR(a.balance)}</div>
+                  </div>
+                </Link>
+              ))}
             </div>
           )}
         </Card>
       </div>
-
-      {/* Credit card utilization */}
-      {creditCards.length > 0 && (
-        <div>
-          <h2 className="mb-2 flex items-center gap-2 text-sm font-medium">
-            <CreditCard className="h-4 w-4" /> Kreditkarten-Auslastung
-          </h2>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {creditCards.map((c) => {
-              const limit = c.credit_limit ?? 0;
-              const used = Math.max(0, -c.balance);
-              const pct = limit > 0 ? Math.min(100, (used / limit) * 100) : 0;
-              const color = pct >= 90 ? "#ef4444" : pct >= 70 ? "#f59e0b" : "#10b981";
-              return (
-                <Link key={c.id} to="/accounts/$accountId" params={{ accountId: c.id }} className="block">
-                  <Card className="p-4 transition hover:border-primary/50">
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground">{c.name}</div>
-                    <div className="mt-1 text-sm font-medium">{fmtEUR(used)} / {fmtEUR(limit)}</div>
-                    <div className="relative mt-2 h-32">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <RadialBarChart
-                          innerRadius="75%"
-                          outerRadius="100%"
-                          data={[{ value: pct, fill: color }]}
-                          startAngle={210}
-                          endAngle={-30}
-                        >
-                          <PolarAngleAxis type="number" domain={[0, 100]} tick={false} />
-                          <RadialBar dataKey="value" cornerRadius={8} background={{ fill: "hsl(var(--muted))" }} />
-                        </RadialBarChart>
-                      </ResponsiveContainer>
-                      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                        <div className="text-2xl font-bold">{pct.toFixed(0)}%</div>
-                        <div className="text-[10px] uppercase tracking-wide text-muted-foreground">verwendet</div>
-                      </div>
-                    </div>
-                  </Card>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      )}
     </div>
+  );
+}
+
+function KpiCard({
+  label,
+  value,
+  sub,
+  icon,
+  accent = "text-foreground",
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  icon?: React.ReactNode;
+  accent?: string;
+}) {
+  return (
+    <Card className="p-4">
+      <div className="flex items-start justify-between gap-2">
+        <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
+        {icon && (
+          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-muted text-muted-foreground">
+            {icon}
+          </div>
+        )}
+      </div>
+      <div className={`mt-2 text-2xl font-bold ${accent}`}>{value}</div>
+      {sub && <div className="mt-0.5 text-[11px] text-muted-foreground">{sub}</div>}
+    </Card>
   );
 }
