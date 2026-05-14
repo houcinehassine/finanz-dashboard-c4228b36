@@ -13,6 +13,7 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 
 function DashboardPage() {
   const [range, setRange] = useState<RangeValue>(DEFAULT_RANGE);
+  const [activeCat, setActiveCat] = useState<string | null>(null);
   const { from, to } = useMemo(() => rangeToFromTo(range), [range]);
 
   const balances = useAccountBalances();
