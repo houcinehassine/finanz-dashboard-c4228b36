@@ -16,7 +16,6 @@ import { Route as AuthenticatedTransactionsRouteImport } from './routes/_authent
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedRecurringRouteImport } from './routes/_authenticated/recurring'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
-import { Route as AuthenticatedCategoriesRouteImport } from './routes/_authenticated/categories'
 import { Route as AuthenticatedAccountsRouteImport } from './routes/_authenticated/accounts'
 import { Route as AuthenticatedAccountsAccountIdRouteImport } from './routes/_authenticated/accounts_.$accountId'
 
@@ -55,11 +54,6 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
-const AuthenticatedCategoriesRoute = AuthenticatedCategoriesRouteImport.update({
-  id: '/categories',
-  path: '/categories',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
 const AuthenticatedAccountsRoute = AuthenticatedAccountsRouteImport.update({
   id: '/accounts',
   path: '/accounts',
@@ -76,7 +70,6 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/accounts': typeof AuthenticatedAccountsRoute
-  '/categories': typeof AuthenticatedCategoriesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/recurring': typeof AuthenticatedRecurringRoute
   '/settings': typeof AuthenticatedSettingsRoute
@@ -87,7 +80,6 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/accounts': typeof AuthenticatedAccountsRoute
-  '/categories': typeof AuthenticatedCategoriesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/recurring': typeof AuthenticatedRecurringRoute
   '/settings': typeof AuthenticatedSettingsRoute
@@ -100,7 +92,6 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/login': typeof LoginRoute
   '/_authenticated/accounts': typeof AuthenticatedAccountsRoute
-  '/_authenticated/categories': typeof AuthenticatedCategoriesRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/recurring': typeof AuthenticatedRecurringRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
@@ -113,7 +104,6 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/accounts'
-    | '/categories'
     | '/dashboard'
     | '/recurring'
     | '/settings'
@@ -124,7 +114,6 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/accounts'
-    | '/categories'
     | '/dashboard'
     | '/recurring'
     | '/settings'
@@ -136,7 +125,6 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/login'
     | '/_authenticated/accounts'
-    | '/_authenticated/categories'
     | '/_authenticated/dashboard'
     | '/_authenticated/recurring'
     | '/_authenticated/settings'
@@ -201,13 +189,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/categories': {
-      id: '/_authenticated/categories'
-      path: '/categories'
-      fullPath: '/categories'
-      preLoaderRoute: typeof AuthenticatedCategoriesRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
     '/_authenticated/accounts': {
       id: '/_authenticated/accounts'
       path: '/accounts'
@@ -227,7 +208,6 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteChildren {
   AuthenticatedAccountsRoute: typeof AuthenticatedAccountsRoute
-  AuthenticatedCategoriesRoute: typeof AuthenticatedCategoriesRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedRecurringRoute: typeof AuthenticatedRecurringRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
@@ -237,7 +217,6 @@ interface AuthenticatedRouteChildren {
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAccountsRoute: AuthenticatedAccountsRoute,
-  AuthenticatedCategoriesRoute: AuthenticatedCategoriesRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedRecurringRoute: AuthenticatedRecurringRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
@@ -257,3 +236,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
