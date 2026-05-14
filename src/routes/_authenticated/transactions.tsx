@@ -82,8 +82,9 @@ function TransactionsPage() {
         </div>
         <div className="flex items-center gap-2">
           <Select value={view} onValueChange={(v) => setView(v as ViewKind)}>
-            <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
             <SelectContent>
+              <SelectItem value="all">Alle (Ein- & Ausgaben)</SelectItem>
               <SelectItem value="expense">Ausgaben</SelectItem>
               <SelectItem value="income">Einnahmen</SelectItem>
             </SelectContent>
