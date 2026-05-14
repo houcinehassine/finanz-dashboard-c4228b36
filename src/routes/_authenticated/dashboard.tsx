@@ -18,6 +18,7 @@ function DashboardPage() {
 
   const balances = useAccountBalances();
   const txs = useTransactions({ from, to });
+  const allTxs = useTransactions();
   const cats = useCategories();
 
   const monthlyInRange = useMemo(() => {
