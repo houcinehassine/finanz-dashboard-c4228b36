@@ -1,14 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAccountBalances, useTransactions, useCategories } from "@/lib/queries";
-import { fmtEUR, fmtDate, fmtMonth, accountTypeLabel } from "@/lib/format";
+import { fmtEUR, fmtDate, accountTypeLabel } from "@/lib/format";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from "recharts";
 import { ChevronLeft, Wallet, CreditCard, Landmark, TrendingDown, Activity, Hash } from "lucide-react";
-import { DateRangePicker, DEFAULT_RANGE, rangeToFromTo, type RangeValue } from "@/components/DateRangePicker";
 
 export const Route = createFileRoute("/_authenticated/accounts_/$accountId")({
   component: AccountDetailPage,
@@ -16,8 +15,6 @@ export const Route = createFileRoute("/_authenticated/accounts_/$accountId")({
 
 function AccountDetailPage() {
   const { accountId } = Route.useParams();
-  const [range, setRange] = useState<RangeValue>(DEFAULT_RANGE);
-  const { from, to } = useMemo(() => rangeToFromTo(range), [range]);
   const balances = useAccountBalances();
   const cats = useCategories();
   const account = (balances.data ?? []).find((a) => a.id === accountId);
@@ -67,8 +64,11 @@ function AccountDetailPage() {
   // Saldo-Verlauf: monthly running balance backwards from current
   const series = useMemo(() => {
     if (!account) return [];
-    const fromD = new Date(from + "T00:00:00");
-    const toD = new Date(to + "T00:00:00");
+    const dates = tList.map((t) => t.occurred_on).sort();
+    const firstDate = dates[0] ?? new Date().toISOString().slice(0, 10);
+    const lastDate = dates[dates.length - 1] ?? new Date().toISOString().slice(0, 10);
+    const fromD = new Date(firstDate + "T00:00:00");
+    const toD = new Date(lastDate + "T00:00:00");
     const months: { key: string; label: string }[] = [];
     const cursor = new Date(fromD.getFullYear(), fromD.getMonth(), 1);
     const end = new Date(toD.getFullYear(), toD.getMonth(), 1);
@@ -105,7 +105,7 @@ function AccountDetailPage() {
       running = running - delta;
     }
     return months.map((m) => ({ label: m.label, balance: endBal.get(m.key) ?? 0 }));
-  }, [tList, account, isLoanLike, from, to]);
+  }, [tList, account, isLoanLike]);
 
   if (!balances.data) {
     return <div className="text-sm text-muted-foreground">Lädt…</div>;
@@ -158,10 +158,7 @@ function AccountDetailPage() {
 
       {/* Chart */}
       <Card className="p-4">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Saldo-Verlauf</div>
-          <DateRangePicker value={range} onChange={setRange} />
-        </div>
+        <div className="mb-3 text-[11px] uppercase tracking-wider text-muted-foreground">Saldo-Verlauf</div>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={series}>

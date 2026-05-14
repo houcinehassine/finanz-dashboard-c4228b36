@@ -144,12 +144,8 @@ function DashboardPage() {
     const remaining = new Map<string, number>();
     for (const l of loans) remaining.set(l.id, Math.max(0, -l.starting_balance));
 
-    const fromMonth = from.slice(0, 7);
-    const toMonth = to.slice(0, 7);
     const months = new Set<string>();
     for (const t of relevant) months.add(t.occurred_on.slice(0, 7));
-    months.add(fromMonth);
-    months.add(toMonth);
     const sortedMonths = Array.from(months).sort();
 
     const points: Array<Record<string, number | string>> = [];
@@ -179,14 +175,14 @@ function DashboardPage() {
       }
       const point: Record<string, number | string> = { month, label: fmtMonth(month + "-01") };
       for (const l of loans) point[l.id] = remaining.get(l.id) ?? 0;
-      if (month >= fromMonth && month <= toMonth) points.push(point);
+      points.push(point);
     }
 
     return {
       keys: loans.map((l) => ({ id: l.id, name: l.name })),
       data: points,
     };
-  }, [loans, allTxs.data, from, to]);
+  }, [loans, allTxs.data]);
 
 
   return (
