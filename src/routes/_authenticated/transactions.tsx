@@ -32,10 +32,10 @@ function TransactionsPage() {
   const [view, setView] = useState<ViewKind>("all");
   const [filterAccount, setFilterAccount] = useState<string>("all");
   const [filterCategory, setFilterCategory] = useState<string>("all");
-  const [range, setRange] = useState<RangeValue>(DEFAULT_RANGE);
+  const [range, setRange] = useState<RangeValue>({ mode: "relative", amount: 3, unit: "month" });
   const now = new Date();
-  const [filterYear, setFilterYear] = useState<string>(String(now.getFullYear()));
-  const [filterMonth, setFilterMonth] = useState<string>(String(now.getMonth() + 1));
+  const [filterYear, setFilterYear] = useState<string>("all");
+  const [filterMonth, setFilterMonth] = useState<string>("all");
   const { from, to } = useMemo(() => {
     if (filterYear !== "all") {
       const y = Number(filterYear);
