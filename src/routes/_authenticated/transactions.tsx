@@ -100,7 +100,7 @@ function TransactionsPage() {
             <DialogTrigger asChild>
               <Button onClick={() => setEditing(null)}><Plus className="mr-2 h-4 w-4" />{newLabel}</Button>
             </DialogTrigger>
-            <TransactionDialog key={editing?.id ?? "new"} tx={editing} defaultKind={view} onClose={() => { setOpen(false); setEditing(null); refresh(); }} />
+            <TransactionDialog key={editing?.id ?? "new"} tx={editing} defaultKind={dialogDefaultKind} onClose={() => { setOpen(false); setEditing(null); refresh(); }} />
           </Dialog>
         </div>
       </div>
