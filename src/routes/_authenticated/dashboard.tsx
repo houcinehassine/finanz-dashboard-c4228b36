@@ -20,10 +20,20 @@ function DashboardPage() {
   const txs = useTransactions({ from, to });
   const cats = useCategories();
 
-  const last6 = useMemo(() => {
-    const m = monthly.data ?? [];
-    return m.slice(-6).map((r) => ({ ...r, label: fmtMonth(r.month) }));
-  }, [monthly.data]);
+  const monthlyInRange = useMemo(() => {
+    const map = new Map<string, { month: string; income: number; expense: number }>();
+    for (const t of txs.data ?? []) {
+      const key = t.occurred_on.slice(0, 7); // YYYY-MM
+      const cur = map.get(key) ?? { month: key, income: 0, expense: 0 };
+      if (t.kind === "income") cur.income += Number(t.amount);
+      else cur.expense += Number(t.amount);
+      map.set(key, cur);
+    }
+    return Array.from(map.values())
+      .sort((a, b) => a.month.localeCompare(b.month))
+      .map((r) => ({ ...r, label: fmtMonth(r.month), net: r.income - r.expense }));
+  }, [txs.data]);
+  void monthly;
 
   const periodTotals = useMemo(() => {
     let income = 0, expense = 0;
