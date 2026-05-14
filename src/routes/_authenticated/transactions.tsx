@@ -95,10 +95,30 @@ function TransactionsPage() {
     qc.invalidateQueries({ queryKey: ["monthly_summary"] });
   };
 
+  const { user } = useAuth();
   const onDelete = async (id: string) => {
     const { error } = await supabase.from("transactions").delete().eq("id", id);
     if (error) toast.error(error.message);
     else { toast.success("Gelöscht"); refresh(); }
+  };
+
+  const onDuplicate = async (t: Transaction) => {
+    if (!user) return;
+    const { error } = await supabase.from("transactions").insert({
+      user_id: user.id,
+      account_id: t.account_id,
+      category_id: t.category_id,
+      loan_account_id: t.loan_account_id,
+      kind: t.kind,
+      amount: t.amount,
+      occurred_on: new Date().toISOString().slice(0, 10),
+      note: t.note,
+      interest_amount: t.interest_amount,
+      is_anyfin: t.is_anyfin,
+      transfer_to_account_id: t.transfer_to_account_id,
+    });
+    if (error) toast.error(error.message);
+    else { toast.success("Dupliziert"); refresh(); }
   };
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
