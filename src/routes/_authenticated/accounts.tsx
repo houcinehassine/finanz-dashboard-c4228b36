@@ -237,9 +237,10 @@ function AccountDialog({ account, onClose }: { account: Partial<Account> | null;
       starting_balance: Number(start) || 0,
       user_id: user.id,
       credit_limit: type === "credit_card" && creditLimit !== "" ? Number(creditLimit) : null,
-      loan_principal: type === "loan" && loanPrincipal !== "" ? Number(loanPrincipal) : null,
+      loan_principal: (type === "loan" || type === "darlehen") && loanPrincipal !== "" ? Number(loanPrincipal) : null,
       loan_interest_rate: type === "loan" && loanRate !== "" ? Number(loanRate) : null,
       loan_term_months: type === "loan" && loanTerm !== "" ? Number(loanTerm) : null,
+      loan_due_on: type === "darlehen" && loanDueOn !== "" ? loanDueOn : null,
     };
     const { error } = account?.id
       ? await supabase.from("accounts").update(payload).eq("id", account.id)
