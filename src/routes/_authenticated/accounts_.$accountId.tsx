@@ -67,20 +67,37 @@ function AccountDetailPage() {
   // Saldo-Verlauf: monthly running balance backwards from current
   const series = useMemo(() => {
     if (!account) return [];
-    const now = new Date();
+    const fromD = new Date(from + "T00:00:00");
+    const toD = new Date(to + "T00:00:00");
     const months: { key: string; label: string }[] = [];
-    for (let i = 11; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const cursor = new Date(fromD.getFullYear(), fromD.getMonth(), 1);
+    const end = new Date(toD.getFullYear(), toD.getMonth(), 1);
+    while (cursor <= end) {
+      const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`;
       months.push({ key, label: key });
+      cursor.setMonth(cursor.getMonth() + 1);
     }
+    if (months.length === 0) return [];
     const deltaByMonth = new Map<string, number>();
     for (const t of tList) {
       const k = t.occurred_on.slice(0, 7);
       deltaByMonth.set(k, (deltaByMonth.get(k) ?? 0) + signFor(t) * t.amount);
     }
-    const endBal = new Map<string, number>();
+    // Walk back from current balance through months AFTER the range to get end-of-range balance
+    const nowKey = new Date().toISOString().slice(0, 7);
     let running = account.balance;
+    const lastKey = months[months.length - 1].key;
+    if (nowKey > lastKey) {
+      const c = new Date();
+      const cur = new Date(c.getFullYear(), c.getMonth(), 1);
+      while (true) {
+        const k = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, "0")}`;
+        if (k <= lastKey) break;
+        running -= deltaByMonth.get(k) ?? 0;
+        cur.setMonth(cur.getMonth() - 1);
+      }
+    }
+    const endBal = new Map<string, number>();
     const sortedDesc = [...months].reverse();
     for (const m of sortedDesc) {
       endBal.set(m.key, running);
@@ -88,7 +105,7 @@ function AccountDetailPage() {
       running = running - delta;
     }
     return months.map((m) => ({ label: m.label, balance: endBal.get(m.key) ?? 0 }));
-  }, [tList, account, isLoanLike]);
+  }, [tList, account, isLoanLike, from, to]);
 
   if (!balances.data) {
     return <div className="text-sm text-muted-foreground">Lädt…</div>;
