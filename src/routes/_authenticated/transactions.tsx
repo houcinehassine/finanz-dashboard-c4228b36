@@ -325,13 +325,14 @@ function TransactionDialog({ tx, defaultKind, onClose }: { tx: Transaction | nul
           </Select>
         </div>
         <div>
-          <Label>Konto</Label>
+          <Label>Bankkonto (Pflicht)</Label>
           <Select value={accountId} onValueChange={setAccountId}>
             <SelectTrigger><SelectValue placeholder="Konto wählen" /></SelectTrigger>
             <SelectContent>
-              {(accounts.data ?? []).map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
+              {bankAccounts.map((a) => <SelectItem key={a.id} value={a.id}>🏦 {a.name}</SelectItem>)}
             </SelectContent>
           </Select>
+          <p className="mt-1 text-xs text-muted-foreground">Geld fließt von / zu diesem Bankkonto.</p>
         </div>
         <div>
           <Label>Kategorie</Label>
