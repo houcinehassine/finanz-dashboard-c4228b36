@@ -37,8 +37,8 @@ export function CategoriesManager() {
   };
 
   const all = cats.data ?? [];
-  const own = all.filter((c) => !SYSTEM_NAMES.has(c.name));
-  const system = all.filter((c) => SYSTEM_NAMES.has(c.name));
+  const own = all.filter((c) => !c.is_system);
+  const system = all.filter((c) => c.is_system);
 
   return (
     <div className="space-y-6">
