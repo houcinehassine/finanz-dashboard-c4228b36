@@ -24,7 +24,7 @@ export const Route = createFileRoute("/_authenticated/transactions")({
   component: TransactionsPage,
 });
 
-type ViewKind = "all" | "expense" | "income";
+type ViewKind = "all" | "expense" | "income" | "transfer";
 
 function TransactionsPage() {
   const accounts = useAccounts();
