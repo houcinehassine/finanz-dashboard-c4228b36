@@ -204,6 +204,8 @@ export type Database = {
           category_id: string | null
           created_at: string
           id: string
+          interest_amount: number | null
+          is_anyfin: boolean
           kind: Database["public"]["Enums"]["transaction_kind"]
           loan_account_id: string | null
           note: string | null
@@ -216,6 +218,8 @@ export type Database = {
           category_id?: string | null
           created_at?: string
           id?: string
+          interest_amount?: number | null
+          is_anyfin?: boolean
           kind: Database["public"]["Enums"]["transaction_kind"]
           loan_account_id?: string | null
           note?: string | null
@@ -228,6 +232,8 @@ export type Database = {
           category_id?: string | null
           created_at?: string
           id?: string
+          interest_amount?: number | null
+          is_anyfin?: boolean
           kind?: Database["public"]["Enums"]["transaction_kind"]
           loan_account_id?: string | null
           note?: string | null
