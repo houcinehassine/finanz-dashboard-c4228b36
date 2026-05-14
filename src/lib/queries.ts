@@ -48,7 +48,7 @@ export function useAccounts() {
     queryFn: async (): Promise<Account[]> => {
       const { data, error } = await supabase
         .from("accounts")
-        .select("id,name,type,starting_balance,archived,icon,credit_limit,loan_principal,loan_interest_rate,loan_term_months")
+        .select("id,name,type,starting_balance,archived,icon,credit_limit,loan_principal,loan_interest_rate,loan_term_months,loan_due_on")
         .order("created_at", { ascending: true });
       if (error) throw error;
       return (data ?? []).map((a: any) => ({
@@ -58,6 +58,7 @@ export function useAccounts() {
         loan_principal: a.loan_principal != null ? Number(a.loan_principal) : null,
         loan_interest_rate: a.loan_interest_rate != null ? Number(a.loan_interest_rate) : null,
         loan_term_months: a.loan_term_months != null ? Number(a.loan_term_months) : null,
+        loan_due_on: a.loan_due_on ?? null,
       }));
     },
   });
