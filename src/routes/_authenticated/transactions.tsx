@@ -277,7 +277,9 @@ function TransactionsPage() {
               const cat = t.category_id ? catById[t.category_id] : null;
               const acc = accountById[t.account_id];
               const loan = t.loan_account_id ? accountById[t.loan_account_id] : null;
+              const dest = t.transfer_to_account_id ? accountById[t.transfer_to_account_id] : null;
               const isSel = selected.has(t.id);
+              const isTransfer = t.kind === "transfer";
               return (
                 <TableRow key={t.id} data-state={isSel ? "selected" : undefined}>
                   <TableCell>
@@ -290,7 +292,8 @@ function TransactionsPage() {
                   <TableCell className="whitespace-nowrap text-muted-foreground">{fmtDate(t.occurred_on)}</TableCell>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
-                      <span>{t.note ?? (cat?.name ?? "—")}</span>
+                      <span>{t.note ?? (isTransfer ? "Umbuchung" : (cat?.name ?? "—"))}</span>
+                      {isTransfer && <Badge variant="outline" className="text-[10px]">↔ Umbuchung</Badge>}
                       {t.is_anyfin && <Badge variant="outline" className="text-[10px]">Anyfin</Badge>}
                       {t.interest_amount != null && t.interest_amount > 0 && (
                         <Badge variant="outline" className="text-[10px]">Zins {fmtEUR(Number(t.interest_amount))}</Badge>
@@ -298,7 +301,9 @@ function TransactionsPage() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    {cat ? (
+                    {isTransfer ? (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    ) : cat ? (
                       <Badge
                         variant="secondary"
                         style={{ backgroundColor: `${cat.color}20`, color: cat.color, borderColor: `${cat.color}40` }}
@@ -311,22 +316,30 @@ function TransactionsPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col gap-1 text-sm">
-                      {acc && (
-                        <span>
-                          <span className="text-muted-foreground">Konto: </span>
-                          <span className="font-medium">{acc.name}</span>
+                      {isTransfer ? (
+                        <span className="font-medium">
+                          {acc?.name ?? "?"} <span className="text-muted-foreground">→</span> {dest?.name ?? "?"}
                         </span>
+                      ) : (
+                        <>
+                          {acc && (
+                            <span>
+                              <span className="text-muted-foreground">Konto: </span>
+                              <span className="font-medium">{acc.name}</span>
+                            </span>
+                          )}
+                          {loan && (
+                            <Badge variant="outline" className="w-fit">
+                              {loan.type === "credit_card" ? "💳 Karte" : loan.type === "darlehen" ? "🤝 Darlehen" : "🏦 Kredit"}: {loan.name}
+                            </Badge>
+                          )}
+                          {!acc && !loan && "—"}
+                        </>
                       )}
-                      {loan && (
-                        <Badge variant="outline" className="w-fit">
-                          {loan.type === "credit_card" ? "💳 Karte" : loan.type === "darlehen" ? "🤝 Darlehen" : "🏦 Kredit"}: {loan.name}
-                        </Badge>
-                      )}
-                      {!acc && !loan && "—"}
                     </div>
                   </TableCell>
-                  <TableCell className={`text-right font-semibold ${t.kind === "expense" ? "text-red-500" : "text-emerald-500"}`}>
-                    {t.kind === "expense" ? "−" : "+"}{fmtEUR(Number(t.amount))}
+                  <TableCell className={`text-right font-semibold ${isTransfer ? "text-muted-foreground" : t.kind === "expense" ? "text-red-500" : "text-emerald-500"}`}>
+                    {isTransfer ? fmtEUR(Number(t.amount)) : `${t.kind === "expense" ? "−" : "+"}${fmtEUR(Number(t.amount))}`}
                   </TableCell>
                   <TableCell className="text-right">
                     <Button size="icon" variant="ghost" onClick={() => { setEditing(t); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
