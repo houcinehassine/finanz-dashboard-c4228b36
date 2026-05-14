@@ -193,6 +193,18 @@ function AccountGrid({
               </div>
             </div>
           )}
+          {a.type === "darlehen" && (
+            <div className="mt-2 space-y-0.5 text-xs text-muted-foreground">
+              <div>Zinsfrei</div>
+              {a.loan_principal != null && <div>Ursprungsbetrag: {fmtEUR(a.loan_principal)}</div>}
+              {a.loan_due_on && <div>Rückzahlung: {new Date(a.loan_due_on).toLocaleDateString("de-DE")}</div>}
+              {a.loan_principal != null && (
+                <div className="pt-1 font-medium text-foreground">
+                  Offen: {fmtEUR(Math.max(0, a.loan_principal + Math.min(a.balance, 0)))}
+                </div>
+              )}
+            </div>
+          )}
         </Card>
       ))}
     </div>
