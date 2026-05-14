@@ -35,13 +35,14 @@ export type Transaction = {
   account_id: string;
   category_id: string | null;
   loan_account_id: string | null;
-  kind: "income" | "expense";
+  kind: "income" | "expense" | "transfer";
   amount: number;
   occurred_on: string;
   note: string | null;
   created_at: string;
   interest_amount: number | null;
   is_anyfin: boolean;
+  transfer_to_account_id: string | null;
 };
 
 export function useAccounts() {
