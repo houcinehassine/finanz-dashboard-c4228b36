@@ -166,6 +166,7 @@ export type Database = {
           created_at: string
           id: string
           kind: Database["public"]["Enums"]["transaction_kind"]
+          loan_account_id: string | null
           note: string | null
           occurred_on: string
           user_id: string
@@ -177,6 +178,7 @@ export type Database = {
           created_at?: string
           id?: string
           kind: Database["public"]["Enums"]["transaction_kind"]
+          loan_account_id?: string | null
           note?: string | null
           occurred_on?: string
           user_id: string
@@ -188,6 +190,7 @@ export type Database = {
           created_at?: string
           id?: string
           kind?: Database["public"]["Enums"]["transaction_kind"]
+          loan_account_id?: string | null
           note?: string | null
           occurred_on?: string
           user_id?: string
@@ -212,6 +215,20 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_loan_account_id_fkey"
+            columns: ["loan_account_id"]
+            isOneToOne: false
+            referencedRelation: "account_balances"
+            referencedColumns: ["account_id"]
+          },
+          {
+            foreignKeyName: "transactions_loan_account_id_fkey"
+            columns: ["loan_account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
             referencedColumns: ["id"]
           },
         ]

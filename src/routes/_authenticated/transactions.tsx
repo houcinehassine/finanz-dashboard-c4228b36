@@ -115,6 +115,7 @@ function TransactionsPage() {
             {filtered.map((t) => {
               const cat = t.category_id ? catById[t.category_id] : null;
               const acc = accountById[t.account_id];
+              const loan = t.loan_account_id ? accountById[t.loan_account_id] : null;
               return (
                 <TableRow key={t.id}>
                   <TableCell className="whitespace-nowrap text-muted-foreground">{fmtDate(t.occurred_on)}</TableCell>
@@ -132,12 +133,20 @@ function TransactionsPage() {
                     )}
                   </TableCell>
                   <TableCell>
-                    {acc ? (
-                      <span className="text-sm">
-                        <span className="text-muted-foreground">Konto: </span>
-                        <span className="font-medium">{acc.name}</span>
-                      </span>
-                    ) : "—"}
+                    <div className="flex flex-col gap-1 text-sm">
+                      {acc && (
+                        <span>
+                          <span className="text-muted-foreground">Konto: </span>
+                          <span className="font-medium">{acc.name}</span>
+                        </span>
+                      )}
+                      {loan && (
+                        <Badge variant="outline" className="w-fit">
+                          {loan.type === "credit_card" ? "💳" : "🏦"} {loan.type === "credit_card" ? "Karte" : "Kredit"}: {loan.name}
+                        </Badge>
+                      )}
+                      {!acc && !loan && "—"}
+                    </div>
                   </TableCell>
                   <TableCell className={`text-right font-semibold ${amountTone}`}>
                     {isExpense ? "−" : "+"}{fmtEUR(Number(t.amount))}
@@ -173,9 +182,11 @@ function TransactionDialog({ tx, defaultKind, onClose }: { tx: Transaction | nul
   const [amount, setAmount] = useState(tx ? String(tx.amount) : "");
   const [date, setDate] = useState(tx?.occurred_on ?? new Date().toISOString().slice(0, 10));
   const [note, setNote] = useState(tx?.note ?? "");
+  const [loanAccountId, setLoanAccountId] = useState<string>(tx?.loan_account_id ?? "none");
   const [busy, setBusy] = useState(false);
 
   const filteredCats = (categories.data ?? []).filter((c) => c.kind === kind);
+  const loanAccounts = (accounts.data ?? []).filter((a) => a.type === "loan" || a.type === "credit_card");
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -185,6 +196,7 @@ function TransactionDialog({ tx, defaultKind, onClose }: { tx: Transaction | nul
       user_id: user.id,
       account_id: accountId,
       category_id: categoryId || null,
+      loan_account_id: loanAccountId && loanAccountId !== "none" ? loanAccountId : null,
       kind,
       amount: Number(amount) || 0,
       occurred_on: date,
@@ -243,6 +255,25 @@ function TransactionDialog({ tx, defaultKind, onClose }: { tx: Transaction | nul
         <div>
           <Label>Beschreibung</Label>
           <Input value={note} onChange={(e) => setNote(e.target.value)} />
+        </div>
+        <div>
+          <Label>Verknüpfter Kredit / Kreditkarte (optional)</Label>
+          <Select value={loanAccountId} onValueChange={setLoanAccountId}>
+            <SelectTrigger><SelectValue placeholder="Keiner" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Keiner</SelectItem>
+              {loanAccounts.map((a) => (
+                <SelectItem key={a.id} value={a.id}>
+                  {a.type === "credit_card" ? "💳" : "🏦"} {a.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {kind === "income"
+              ? "Z.B. wenn diese Einnahme eine Kreditauszahlung ist."
+              : "Z.B. wenn diese Ausgabe eine Rate / Tilgung für einen Kredit oder eine Kreditkarten-Zahlung ist."}
+          </p>
         </div>
         <Button type="submit" className="w-full" disabled={busy}>Speichern</Button>
       </form>
