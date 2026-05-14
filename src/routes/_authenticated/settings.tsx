@@ -58,11 +58,8 @@ function SettingsPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="language" className="mt-4">
-          <Card className="p-5">
-            <h2 className="mb-1 text-sm font-semibold">Sprache</h2>
-            <p className="text-sm text-muted-foreground">Aktuelle Sprache: Deutsch (DE). Weitere Sprachen folgen.</p>
-          </Card>
+        <TabsContent value="language" className="mt-4 space-y-4">
+          <AppearanceCard />
         </TabsContent>
 
         <TabsContent value="csv" className="mt-4">
