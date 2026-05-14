@@ -297,9 +297,88 @@ function DashboardPage() {
           )}
         </Card>
       </div>
+
+      {/* Row 4: Kredite + Verlauf */}
+      {loans.length > 0 && (
+        <div className="grid gap-4 lg:grid-cols-3">
+          <Card className="p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">Kredite</div>
+              <Landmark className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <div className="space-y-2">
+              {loans.map((l) => {
+                const principal = l.loan_principal ?? Math.abs(l.starting_balance);
+                const remaining = Math.max(0, -l.balance);
+                const paid = Math.max(0, principal - remaining);
+                const pct = principal > 0 ? Math.min(100, (paid / principal) * 100) : 0;
+                return (
+                  <Link key={l.id} to="/accounts/$accountId" params={{ accountId: l.id }} className="block">
+                    <div className="rounded-md border p-3 transition hover:border-primary/50 hover:bg-muted">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="truncate text-sm font-medium">{l.name}</div>
+                        <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">{accountTypeLabel[l.type]}</span>
+                      </div>
+                      <div className="mt-1 text-lg font-semibold text-red-500">{fmtEUR(remaining)}</div>
+                      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                        <div className="h-full rounded-full bg-emerald-500" style={{ width: `${pct}%` }} />
+                      </div>
+                      <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
+                        <span>Getilgt {fmtEUR(paid)}</span>
+                        <span>{pct.toFixed(0)}%</span>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </Card>
+
+          <Card className="p-4 lg:col-span-2">
+            <div className="mb-3 flex items-baseline justify-between gap-2">
+              <div>
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">Verlauf der Kredite</div>
+                <div className="text-sm font-medium">Restschuld über Zeit</div>
+              </div>
+              <div className="text-xs text-muted-foreground">Gesamt: <span className="font-semibold text-red-500">{fmtEUR(remainingDebt)}</span></div>
+            </div>
+            <div className="h-80 w-full">
+              {loanSeries.data.length === 0 ? (
+                <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                  Noch keine Kreditbewegungen.
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={loanSeries.data} margin={{ top: 10, right: 20, left: 10, bottom: 20 }}>
+                    <CartesianGrid stroke="hsl(var(--muted))" strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="label" tick={{ fontSize: 12 }} tickMargin={8} />
+                    <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} width={50} />
+                    <Tooltip formatter={(v: number) => fmtEUR(v)} />
+                    <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+                    {loanSeries.keys.map((k, i) => (
+                      <Line
+                        key={k.id}
+                        type="monotone"
+                        dataKey={k.id}
+                        name={k.name}
+                        stroke={LOAN_COLORS[i % LOAN_COLORS.length]}
+                        strokeWidth={2}
+                        dot={false}
+                        activeDot={{ r: 4 }}
+                      />
+                    ))}
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
+
+const LOAN_COLORS = ["#ef4444", "#f59e0b", "#8b5cf6", "#06b6d4", "#ec4899", "#10b981"];
 
 function KpiCard({
   label,
