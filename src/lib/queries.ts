@@ -30,6 +30,7 @@ export type Transaction = {
   id: string;
   account_id: string;
   category_id: string | null;
+  loan_account_id: string | null;
   kind: "income" | "expense";
   amount: number;
   occurred_on: string;
