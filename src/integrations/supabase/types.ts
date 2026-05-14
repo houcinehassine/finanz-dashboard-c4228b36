@@ -123,11 +123,14 @@ export type Database = {
           amount: number
           category_id: string | null
           created_at: string
+          day_of_month: number | null
+          end_on: string | null
           frequency: Database["public"]["Enums"]["recurring_frequency"]
           id: string
           kind: Database["public"]["Enums"]["transaction_kind"]
           last_booked_on: string | null
           loan_account_id: string | null
+          name: string | null
           next_due_on: string
           note: string | null
           start_on: string
@@ -139,11 +142,14 @@ export type Database = {
           amount: number
           category_id?: string | null
           created_at?: string
+          day_of_month?: number | null
+          end_on?: string | null
           frequency: Database["public"]["Enums"]["recurring_frequency"]
           id?: string
           kind?: Database["public"]["Enums"]["transaction_kind"]
           last_booked_on?: string | null
           loan_account_id?: string | null
+          name?: string | null
           next_due_on: string
           note?: string | null
           start_on?: string
@@ -155,11 +161,14 @@ export type Database = {
           amount?: number
           category_id?: string | null
           created_at?: string
+          day_of_month?: number | null
+          end_on?: string | null
           frequency?: Database["public"]["Enums"]["recurring_frequency"]
           id?: string
           kind?: Database["public"]["Enums"]["transaction_kind"]
           last_booked_on?: string | null
           loan_account_id?: string | null
+          name?: string | null
           next_due_on?: string
           note?: string | null
           start_on?: string
@@ -326,6 +335,7 @@ export type Database = {
         }
         Returns: string
       }
+      book_recurring_now: { Args: { rule_id: string }; Returns: string }
       process_due_recurring: { Args: never; Returns: number }
     }
     Enums: {
