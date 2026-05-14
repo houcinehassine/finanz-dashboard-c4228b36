@@ -27,8 +27,12 @@ function TransactionsPage() {
   const categories = useCategories();
   const [view, setView] = useState<ViewKind>("expense");
   const [filterAccount, setFilterAccount] = useState<string>("all");
+  const [range, setRange] = useState<RangeValue>(DEFAULT_RANGE);
+  const { from, to } = useMemo(() => rangeToFromTo(range), [range]);
   const txs = useTransactions({
     accountId: filterAccount === "all" ? undefined : filterAccount,
+    from,
+    to,
   });
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
