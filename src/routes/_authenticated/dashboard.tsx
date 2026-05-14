@@ -56,7 +56,7 @@ function DashboardPage() {
     [balances.data],
   );
   const liquidTxs = useMemo(
-    () => (txs.data ?? []).filter((t) => liquidIds.has(t.account_id)),
+    () => (txs.data ?? []).filter((t) => t.kind !== "transfer" && liquidIds.has(t.account_id)),
     [txs.data, liquidIds],
   );
 
@@ -66,7 +66,7 @@ function DashboardPage() {
       const key = t.occurred_on.slice(0, 7);
       const cur = map.get(key) ?? { month: key, income: 0, expense: 0 };
       if (t.kind === "income") cur.income += Number(t.amount);
-      else cur.expense += Number(t.amount);
+      else if (t.kind === "expense") cur.expense += Number(t.amount);
       map.set(key, cur);
     }
     return Array.from(map.values())
@@ -78,7 +78,7 @@ function DashboardPage() {
     let income = 0, expense = 0;
     for (const t of liquidTxs) {
       if (t.kind === "income") income += t.amount;
-      else expense += t.amount;
+      else if (t.kind === "expense") expense += t.amount;
     }
     return { income, expense, net: income - expense };
   }, [liquidTxs]);
