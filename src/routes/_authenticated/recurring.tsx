@@ -41,6 +41,7 @@ type RecurringRule = {
   last_booked_on: string | null;
   day_of_month: number | null;
   active: boolean;
+  archived: boolean;
 };
 
 const freqLabel: Record<Frequency, string> = {
