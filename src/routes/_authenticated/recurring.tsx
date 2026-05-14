@@ -95,7 +95,7 @@ function RecurringPage() {
     const out: { rule: RecurringRule; date: string }[] = [];
     for (const r of items) {
       if (!r.active) continue;
-      const dom = r.day_of_month ?? Number((r.start_on || "").slice(8, 10)) || 1;
+      const dom = r.day_of_month ?? (Number((r.start_on || "").slice(8, 10)) || 1);
       const start = new Date(r.start_on);
       const end = r.end_on ? new Date(r.end_on) : null;
       // first occurrence on/after start matching dom
