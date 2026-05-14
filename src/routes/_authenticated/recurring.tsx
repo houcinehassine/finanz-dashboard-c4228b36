@@ -124,7 +124,13 @@ function RecurringPage() {
       }
     }
     out.sort((a, b) => a.date.localeCompare(b.date));
-    return out;
+    const byRule = new Map<string, { rule: RecurringRule; date: string; count: number }>();
+    for (const it of out) {
+      const prev = byRule.get(it.rule.id);
+      if (!prev) byRule.set(it.rule.id, { rule: it.rule, date: it.date, count: 1 });
+      else { prev.count += 1; if (it.date > prev.date) prev.date = it.date; }
+    }
+    return Array.from(byRule.values()).sort((a, b) => a.date.localeCompare(b.date));
   }, [items, allTx.data, todayStr]);
 
   const onDelete = async (id: string) => {
