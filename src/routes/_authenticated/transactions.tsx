@@ -239,7 +239,7 @@ function TransactionsPage() {
                       )}
                       {loan && (
                         <Badge variant="outline" className="w-fit">
-                          {loan.type === "credit_card" ? "💳" : "🏦"} {loan.type === "credit_card" ? "Karte" : "Kredit"}: {loan.name}
+                          {loan.type === "credit_card" ? "💳 Karte" : loan.type === "darlehen" ? "🤝 Darlehen" : "🏦 Kredit"}: {loan.name}
                         </Badge>
                       )}
                       {!acc && !loan && "—"}
