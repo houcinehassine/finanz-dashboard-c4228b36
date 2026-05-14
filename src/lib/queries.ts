@@ -40,6 +40,8 @@ export type Transaction = {
   occurred_on: string;
   note: string | null;
   created_at: string;
+  interest_amount: number | null;
+  is_anyfin: boolean;
 };
 
 export function useAccounts() {
