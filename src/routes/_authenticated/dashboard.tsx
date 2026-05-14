@@ -121,45 +121,102 @@ function DashboardPage() {
         </div>
       </div>
 
-      {/* Charts */}
-      <div className="grid gap-4 lg:grid-cols-2">
+      {/* Charts (stacked, full width for clarity) */}
+      <div className="space-y-4">
         <Card className="p-4">
-          <h3 className="mb-3 text-sm font-medium">Einnahmen vs. Ausgaben (letzte 6 Monate)</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={last6}>
-                <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip formatter={(v: number) => fmtEUR(v)} />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Bar dataKey="income" name="Einnahmen" fill="#10b981" />
-                <Bar dataKey="expense" name="Ausgaben" fill="#ef4444" />
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+            <h3 className="text-sm font-medium">Einnahmen vs. Ausgaben ({periodLabel})</h3>
+            <div className="text-xs text-muted-foreground">
+              Netto: <span className={periodTotals.net < 0 ? "text-red-500 font-semibold" : "text-emerald-500 font-semibold"}>{fmtEUR(periodTotals.net)}</span>
+            </div>
+          </div>
+          <div className="h-80 w-full">
+            {monthlyInRange.length === 0 ? (
+              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                Keine Daten im gewählten Zeitraum.
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={monthlyInRange} margin={{ top: 10, right: 20, left: 10, bottom: 20 }}>
+                  <XAxis dataKey="label" tick={{ fontSize: 12 }} tickMargin={8} />
+                  <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} width={50} />
+                  <Tooltip formatter={(v: number) => fmtEUR(v)} cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }} />
+                  <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+                  <Bar dataKey="income" name="Einnahmen" fill="#10b981" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="expense" name="Ausgaben" fill="#ef4444" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </Card>
 
         <Card className="p-4">
-          <h3 className="mb-3 text-sm font-medium">Ausgaben nach Kategorie ({periodLabel})</h3>
-          <div className="h-64">
-            {expenseByCat.length === 0 ? (
-              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                Keine Ausgaben im gewählten Zeitraum.
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={expenseByCat} dataKey="value" nameKey="name" innerRadius={50} outerRadius={85} paddingAngle={2}>
-                    {expenseByCat.map((e, i) => (
-                      <Cell key={i} fill={e.color} stroke="hsl(var(--background))" strokeWidth={2} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(v: number) => fmtEUR(v)} />
-                  <Legend wrapperStyle={{ fontSize: 12 }} />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
+          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+            <h3 className="text-sm font-medium">Ausgaben nach Kategorie ({periodLabel})</h3>
+            <div className="text-xs text-muted-foreground">
+              Gesamt: <span className="font-semibold text-red-500">{fmtEUR(periodTotals.expense)}</span>
+            </div>
           </div>
+          {expenseByCat.length === 0 ? (
+            <div className="flex h-80 items-center justify-center text-sm text-muted-foreground">
+              Keine Ausgaben im gewählten Zeitraum.
+            </div>
+          ) : (
+            <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
+              <div className="h-80 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={expenseByCat}
+                      dataKey="value"
+                      nameKey="name"
+                      innerRadius={70}
+                      outerRadius={120}
+                      paddingAngle={2}
+                      onClick={(d: any) => setActiveCat((p) => (p === d?.name ? null : d?.name))}
+                    >
+                      {expenseByCat.map((e, i) => (
+                        <Cell
+                          key={i}
+                          fill={e.color}
+                          stroke="hsl(var(--background))"
+                          strokeWidth={2}
+                          opacity={activeCat && activeCat !== e.name ? 0.35 : 1}
+                          style={{ cursor: "pointer", transition: "opacity 0.2s" }}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(v: number) => fmtEUR(v)} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="space-y-1.5 self-center">
+                {expenseByCat
+                  .slice()
+                  .sort((a, b) => b.value - a.value)
+                  .map((e) => {
+                    const pct = periodTotals.expense > 0 ? (e.value / periodTotals.expense) * 100 : 0;
+                    const active = activeCat === e.name;
+                    return (
+                      <button
+                        key={e.name}
+                        type="button"
+                        onClick={() => setActiveCat((p) => (p === e.name ? null : e.name))}
+                        className={`flex w-full items-center justify-between gap-3 rounded-md border px-2 py-1.5 text-left text-xs transition hover:bg-muted ${active ? "border-primary bg-muted" : "border-transparent"}`}
+                      >
+                        <span className="flex items-center gap-2 truncate">
+                          <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: e.color }} />
+                          <span className="truncate">{e.name}</span>
+                        </span>
+                        <span className="shrink-0 tabular-nums text-muted-foreground">
+                          {fmtEUR(e.value)} <span className="ml-1 text-[10px]">({pct.toFixed(0)}%)</span>
+                        </span>
+                      </button>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
         </Card>
       </div>
 
