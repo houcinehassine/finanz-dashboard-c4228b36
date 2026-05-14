@@ -10,10 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useCategories, type Category } from "@/lib/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { Plus, Pencil, Trash2, Lock } from "lucide-react";
+import { Plus, Pencil, Trash2, Lock, ArrowDownCircle, ArrowUpCircle } from "lucide-react";
 import { toast } from "sonner";
-
-// Names seeded by the public.handle_new_user() trigger – treated as system categories
 
 export function CategoriesManager() {
   const cats = useCategories();
@@ -37,11 +35,11 @@ export function CategoriesManager() {
   };
 
   const all = cats.data ?? [];
-  const own = all.filter((c) => !c.is_system);
-  const system = all.filter((c) => c.is_system);
+  const income = all.filter((c) => c.kind === "income");
+  const expense = all.filter((c) => c.kind === "expense");
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold">Kategorien</h2>
@@ -49,7 +47,7 @@ export function CategoriesManager() {
         </div>
         <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setEditing(null); refresh(); } }}>
           <DialogTrigger asChild>
-            <Button variant="outline" onClick={() => setEditing({ kind: "expense", color: "#64748b", icon: "💸" })}>
+            <Button variant="outline" onClick={() => setEditing({ kind: "expense", color: "#64748b" })}>
               <Plus className="mr-2 h-4 w-4" />Neue Kategorie
             </Button>
           </DialogTrigger>
@@ -57,31 +55,78 @@ export function CategoriesManager() {
         </Dialog>
       </div>
 
-      <Section title="Eigene" emptyHint="Noch keine eigenen Kategorien.">
-        {own.map((c) => (
-          <CategoryRow key={c.id} c={c} onToggle={() => toggleActive(c)} onEdit={() => { setEditing(c); setOpen(true); }} onDelete={() => onDelete(c.id)} />
-        ))}
-      </Section>
+      <KindSection
+        title="Einkommen"
+        icon={<ArrowDownCircle className="h-4 w-4 text-emerald-500" />}
+        items={income}
+        onToggle={toggleActive}
+        onEdit={(c) => { setEditing(c); setOpen(true); }}
+        onDelete={onDelete}
+      />
 
-      <Section title="System" locked emptyHint="Keine System-Kategorien.">
-        {system.map((c) => (
-          <CategoryRow key={c.id} c={c} system onToggle={() => toggleActive(c)} />
-        ))}
-      </Section>
+      <KindSection
+        title="Ausgaben"
+        icon={<ArrowUpCircle className="h-4 w-4 text-red-500" />}
+        items={expense}
+        onToggle={toggleActive}
+        onEdit={(c) => { setEditing(c); setOpen(true); }}
+        onDelete={onDelete}
+      />
     </div>
   );
 }
 
-function Section({ title, locked, emptyHint, children }: { title: string; locked?: boolean; emptyHint: string; children: React.ReactNode }) {
+function KindSection({
+  title,
+  icon,
+  items,
+  onToggle,
+  onEdit,
+  onDelete,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  items: Category[];
+  onToggle: (c: Category) => void;
+  onEdit: (c: Category) => void;
+  onDelete: (id: string) => void;
+}) {
+  const system = items.filter((c) => c.is_system);
+  const own = items.filter((c) => !c.is_system);
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2 border-b pb-2">
+        {icon}
+        <h3 className="text-base font-semibold">{title}</h3>
+        <span className="text-xs text-muted-foreground">({items.length})</span>
+      </div>
+
+      <Group label="System" locked emptyHint="Keine System-Kategorien.">
+        {system.map((c) => (
+          <CategoryRow key={c.id} c={c} system onToggle={() => onToggle(c)} />
+        ))}
+      </Group>
+
+      <Group label="Eigene" emptyHint="Noch keine eigenen Kategorien.">
+        {own.map((c) => (
+          <CategoryRow key={c.id} c={c} onToggle={() => onToggle(c)} onEdit={() => onEdit(c)} onDelete={() => onDelete(c.id)} />
+        ))}
+      </Group>
+    </div>
+  );
+}
+
+function Group({ label, locked, emptyHint, children }: { label: string; locked?: boolean; emptyHint: string; children: React.ReactNode }) {
   const arr = Array.isArray(children) ? children : [children];
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         {locked && <Lock className="h-3 w-3" />}
-        {title}
+        {label}
       </div>
       {arr.length === 0 ? (
-        <Card className="p-4 text-sm text-muted-foreground">{emptyHint}</Card>
+        <Card className="p-3 text-sm text-muted-foreground">{emptyHint}</Card>
       ) : (
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{children}</div>
       )}
@@ -105,10 +150,9 @@ function CategoryRow({
   return (
     <Card className="flex items-center justify-between gap-3 p-3">
       <div className="flex min-w-0 items-center gap-3">
-        <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: c.color }} />
-        <div className="min-w-0">
-          <div className={`truncate text-sm font-medium ${c.archived ? "line-through text-muted-foreground" : ""}`}>{c.name}</div>
-          <div className="truncate font-mono text-xs text-muted-foreground">{c.name.toLowerCase().replace(/\s+/g, "_")}</div>
+        <span className="h-4 w-4 shrink-0 rounded-full ring-2 ring-background" style={{ backgroundColor: c.color }} />
+        <div className={`min-w-0 truncate text-sm font-medium ${c.archived ? "line-through text-muted-foreground" : ""}`}>
+          {c.name}
         </div>
       </div>
       <div className="flex items-center gap-1">
@@ -131,14 +175,13 @@ function CategoryDialog({ category, onClose }: { category: Partial<Category> | n
   const [name, setName] = useState(category?.name ?? "");
   const [kind, setKind] = useState<Category["kind"]>(category?.kind ?? "expense");
   const [color, setColor] = useState(category?.color ?? "#64748b");
-  const [icon, setIcon] = useState(category?.icon ?? "💸");
   const [busy, setBusy] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
     setBusy(true);
-    const payload = { name, kind, color, icon, user_id: user.id };
+    const payload = { name, kind, color, icon: "", user_id: user.id };
     const { error } = category?.id
       ? await supabase.from("categories").update(payload).eq("id", category.id)
       : await supabase.from("categories").insert(payload);
@@ -165,14 +208,12 @@ function CategoryDialog({ category, onClose }: { category: Partial<Category> | n
             </SelectContent>
           </Select>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label>Emoji</Label>
-            <Input maxLength={4} value={icon} onChange={(e) => setIcon(e.target.value)} />
-          </div>
-          <div>
-            <Label>Farbe</Label>
-            <Input type="color" value={color} onChange={(e) => setColor(e.target.value)} />
+        <div>
+          <Label>Farbe</Label>
+          <div className="flex items-center gap-3">
+            <Input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="h-10 w-20 p-1" />
+            <span className="h-8 w-8 rounded-full ring-2 ring-background" style={{ backgroundColor: color }} />
+            <Input value={color} onChange={(e) => setColor(e.target.value)} className="flex-1 font-mono text-xs" />
           </div>
         </div>
         <Button type="submit" className="w-full" disabled={busy}>Speichern</Button>
