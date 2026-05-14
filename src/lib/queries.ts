@@ -108,7 +108,7 @@ export function useCategories() {
   });
 }
 
-export function useTransactions(filters?: { accountId?: string; categoryId?: string; from?: string; to?: string }) {
+export function useTransactions(filters?: { accountId?: string; loanAccountId?: string; anyAccountId?: string; categoryId?: string; from?: string; to?: string }) {
   const { user } = useAuth();
   return useQuery({
     enabled: !!user,
@@ -120,6 +120,8 @@ export function useTransactions(filters?: { accountId?: string; categoryId?: str
         .order("occurred_on", { ascending: false })
         .order("created_at", { ascending: false });
       if (filters?.accountId) q = q.eq("account_id", filters.accountId);
+      if (filters?.loanAccountId) q = q.eq("loan_account_id", filters.loanAccountId);
+      if (filters?.anyAccountId) q = q.or(`account_id.eq.${filters.anyAccountId},loan_account_id.eq.${filters.anyAccountId}`);
       if (filters?.categoryId) q = q.eq("category_id", filters.categoryId);
       if (filters?.from) q = q.gte("occurred_on", filters.from);
       if (filters?.to) q = q.lte("occurred_on", filters.to);
