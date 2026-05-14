@@ -77,6 +77,7 @@ export function useAccountBalances() {
         name: r.name,
         type: r.type,
         archived: r.archived,
+        icon: r.icon ?? '🏦',
         starting_balance: Number(r.starting_balance),
         balance: Number(r.balance),
         credit_limit: r.credit_limit != null ? Number(r.credit_limit) : null,
