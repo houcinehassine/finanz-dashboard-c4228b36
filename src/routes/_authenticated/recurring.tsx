@@ -148,7 +148,11 @@ function RecurringPage() {
     else { toast.success("Gelöscht"); refresh(); }
   };
 
-  const onBookOccurrence = async (r: RecurringRule, date: string) => {
+  const onToggleArchive = async (r: RecurringRule) => {
+    const { error } = await (supabase as any).from("recurring_rules").update({ archived: !r.archived }).eq("id", r.id);
+    if (error) toast.error(error.message);
+    else { toast.success(r.archived ? "Wiederhergestellt" : "Archiviert"); refresh(); }
+  };
     if (!user) return;
     const key = `${r.id}:${date}`;
     setBookingKey(key);
