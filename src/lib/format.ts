@@ -12,4 +12,5 @@ export const accountTypeLabel: Record<string, string> = {
   savings: "Sparkonto",
   credit_card: "Kreditkarte",
   loan: "Kredit",
+  darlehen: "Darlehen",
 };

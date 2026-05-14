@@ -12,7 +12,7 @@ import { useAccountBalances, type Account, type AccountBalance } from "@/lib/que
 import { fmtEUR, accountTypeLabel } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { Plus, Pencil, Archive, Trash2, Wallet, CreditCard, Landmark } from "lucide-react";
+import { Plus, Pencil, Archive, Trash2, Wallet, CreditCard, Landmark, HandCoins } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/accounts")({
@@ -47,6 +47,7 @@ function AccountsPage() {
   const bank = all.filter((a) => a.type === "checking" || a.type === "savings");
   const cards = all.filter((a) => a.type === "credit_card");
   const loans = all.filter((a) => a.type === "loan");
+  const darlehen = all.filter((a) => a.type === "darlehen");
 
   const newOf = (t: Account["type"]) => {
     setEditing({ type: t });
@@ -90,6 +91,16 @@ function AccountsPage() {
           onNew={() => newOf("loan")}
         />
         <AccountGrid items={loans} onEdit={(a) => { setEditing(a); setOpen(true); }} onArchive={onArchive} onDelete={onDelete} emptyHint="Noch keine Kredite." />
+      </section>
+
+      <section className="space-y-4">
+        <SectionHeader
+          title="Darlehen"
+          desc="Zinsfreie private Darlehen. Optionales Rückzahlungsdatum."
+          icon={<HandCoins className="h-5 w-5 text-primary" />}
+          onNew={() => newOf("darlehen")}
+        />
+        <AccountGrid items={darlehen} onEdit={(a) => { setEditing(a); setOpen(true); }} onArchive={onArchive} onDelete={onDelete} emptyHint="Noch keine Darlehen." />
       </section>
 
       <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setEditing(null); refresh(); } }}>
@@ -182,6 +193,18 @@ function AccountGrid({
               </div>
             </div>
           )}
+          {a.type === "darlehen" && (
+            <div className="mt-2 space-y-0.5 text-xs text-muted-foreground">
+              <div>Zinsfrei</div>
+              {a.loan_principal != null && <div>Ursprungsbetrag: {fmtEUR(a.loan_principal)}</div>}
+              {a.loan_due_on && <div>Rückzahlung: {new Date(a.loan_due_on).toLocaleDateString("de-DE")}</div>}
+              {a.loan_principal != null && (
+                <div className="pt-1 font-medium text-foreground">
+                  Offen: {fmtEUR(Math.max(0, a.loan_principal + Math.min(a.balance, 0)))}
+                </div>
+              )}
+            </div>
+          )}
         </Card>
       ))}
     </div>
@@ -197,8 +220,9 @@ function AccountDialog({ account, onClose }: { account: Partial<Account> | null;
   const [loanPrincipal, setLoanPrincipal] = useState(String(account?.loan_principal ?? ""));
   const [loanRate, setLoanRate] = useState(String(account?.loan_interest_rate ?? ""));
   const [loanTerm, setLoanTerm] = useState(String(account?.loan_term_months ?? ""));
+  const [loanDueOn, setLoanDueOn] = useState(account?.loan_due_on ?? "");
   const defaultIcon = (t: Account["type"]) =>
-    t === "credit_card" ? "💳" : t === "loan" ? "🏛️" : t === "savings" ? "💰" : "🏦";
+    t === "credit_card" ? "💳" : t === "loan" ? "🏛️" : t === "darlehen" ? "🤝" : t === "savings" ? "💰" : "🏦";
   const [icon, setIcon] = useState(account?.icon ?? defaultIcon((account?.type as Account["type"]) ?? "checking"));
   const [busy, setBusy] = useState(false);
 
@@ -213,9 +237,10 @@ function AccountDialog({ account, onClose }: { account: Partial<Account> | null;
       starting_balance: Number(start) || 0,
       user_id: user.id,
       credit_limit: type === "credit_card" && creditLimit !== "" ? Number(creditLimit) : null,
-      loan_principal: type === "loan" && loanPrincipal !== "" ? Number(loanPrincipal) : null,
+      loan_principal: (type === "loan" || type === "darlehen") && loanPrincipal !== "" ? Number(loanPrincipal) : null,
       loan_interest_rate: type === "loan" && loanRate !== "" ? Number(loanRate) : null,
       loan_term_months: type === "loan" && loanTerm !== "" ? Number(loanTerm) : null,
+      loan_due_on: type === "darlehen" && loanDueOn !== "" ? loanDueOn : null,
     };
     const { error } = account?.id
       ? await supabase.from("accounts").update(payload).eq("id", account.id)
@@ -248,6 +273,7 @@ function AccountDialog({ account, onClose }: { account: Partial<Account> | null;
               <SelectItem value="savings">Sparkonto</SelectItem>
               <SelectItem value="credit_card">Kreditkarte</SelectItem>
               <SelectItem value="loan">Kredit</SelectItem>
+              <SelectItem value="darlehen">Darlehen (zinsfrei)</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -259,6 +285,9 @@ function AccountDialog({ account, onClose }: { account: Partial<Account> | null;
           )}
           {type === "loan" && (
             <p className="mt-1 text-xs text-muted-foreground">Tipp: aktuelle Restschuld als negativen Wert eintragen.</p>
+          )}
+          {type === "darlehen" && (
+            <p className="mt-1 text-xs text-muted-foreground">Tipp: offenen Betrag als negativen Wert eintragen (zinsfrei).</p>
           )}
         </div>
         {type === "credit_card" && (
@@ -282,6 +311,18 @@ function AccountDialog({ account, onClose }: { account: Partial<Account> | null;
                 <Label>Laufzeit (Monate)</Label>
                 <Input type="number" step="1" value={loanTerm} onChange={(e) => setLoanTerm(e.target.value)} />
               </div>
+            </div>
+          </>
+        )}
+        {type === "darlehen" && (
+          <>
+            <div>
+              <Label>Ursprünglicher Betrag (€) <span className="text-muted-foreground">(optional)</span></Label>
+              <Input type="number" step="0.01" value={loanPrincipal} onChange={(e) => setLoanPrincipal(e.target.value)} />
+            </div>
+            <div>
+              <Label>Rückzahlungsdatum <span className="text-muted-foreground">(optional)</span></Label>
+              <Input type="date" value={loanDueOn} onChange={(e) => setLoanDueOn(e.target.value)} />
             </div>
           </>
         )}
