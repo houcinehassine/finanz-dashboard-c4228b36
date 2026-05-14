@@ -8,6 +8,7 @@ export type Account = {
   type: "checking" | "savings" | "credit_card" | "loan";
   starting_balance: number;
   archived: boolean;
+  icon: string;
   credit_limit: number | null;
   loan_principal: number | null;
   loan_interest_rate: number | null;
