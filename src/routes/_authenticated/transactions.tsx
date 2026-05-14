@@ -515,6 +515,7 @@ function TransactionDialog({ tx, defaultKind, onClose }: { tx: Transaction | nul
   const categories = useCategories();
   const [kind, setKind] = useState<Transaction["kind"]>(tx?.kind ?? defaultKind ?? "expense");
   const [accountId, setAccountId] = useState<string>(tx?.account_id ?? "");
+  const [transferToId, setTransferToId] = useState<string>(tx?.transfer_to_account_id ?? "");
   const [categoryId, setCategoryId] = useState<string>(tx?.category_id ?? "");
   const [amount, setAmount] = useState(tx ? String(tx.amount) : "");
   const [date, setDate] = useState(tx?.occurred_on ?? new Date().toISOString().slice(0, 10));
@@ -522,31 +523,37 @@ function TransactionDialog({ tx, defaultKind, onClose }: { tx: Transaction | nul
   const [loanAccountId, setLoanAccountId] = useState<string>(tx?.loan_account_id ?? "none");
   const [busy, setBusy] = useState(false);
 
+  const isTransfer = kind === "transfer";
   const filteredCats = (categories.data ?? []).filter((c) => c.kind === kind);
   const bankAccounts = (accounts.data ?? []).filter((a) => a.type === "checking" || a.type === "savings" || a.type === "clearing");
   const loanAccounts = (accounts.data ?? []).filter((a) => a.type === "loan" || a.type === "credit_card" || a.type === "darlehen");
+  // For transfers, allow ANY account (bank, clearing, loan, card) on both sides
+  const allTransferAccounts = (accounts.data ?? []).filter((a) => !a.archived);
   const loanIcon = (t: string) => t === "credit_card" ? "💳" : t === "darlehen" ? "🤝" : "🏦";
   const loanLabel = (t: string) => t === "credit_card" ? "Karte" : t === "darlehen" ? "Darlehen" : "Kredit";
 
   const selectedAccount = (accounts.data ?? []).find((a) => a.id === accountId);
-  // Auto-link to the clearing account's linked loan when applicable
   const effectiveAccountIcon = (a: { type: string }) =>
-    a.type === "clearing" ? "⚖️" : a.type === "savings" ? "💰" : "🏦";
+    a.type === "clearing" ? "⚖️" : a.type === "savings" ? "💰" : a.type === "credit_card" ? "💳" : a.type === "loan" ? "🏦" : a.type === "darlehen" ? "🤝" : "🏦";
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !accountId) { toast.error("Bitte Konto wählen"); return; }
+    if (isTransfer) {
+      if (!transferToId) { toast.error("Bitte Zielkonto wählen"); return; }
+      if (transferToId === accountId) { toast.error("Quell- und Zielkonto müssen unterschiedlich sein"); return; }
+    }
     setBusy(true);
-    // If the chosen account is a clearing account with a linked loan, auto-link it
     let finalLoan = loanAccountId && loanAccountId !== "none" ? loanAccountId : null;
-    if (!finalLoan && selectedAccount?.type === "clearing" && selectedAccount.linked_loan_account_id) {
+    if (!isTransfer && !finalLoan && selectedAccount?.type === "clearing" && selectedAccount.linked_loan_account_id) {
       finalLoan = selectedAccount.linked_loan_account_id;
     }
-    const payload = {
+    const payload: any = {
       user_id: user.id,
       account_id: accountId,
-      category_id: categoryId || null,
-      loan_account_id: finalLoan,
+      category_id: isTransfer ? null : (categoryId || null),
+      loan_account_id: isTransfer ? null : finalLoan,
+      transfer_to_account_id: isTransfer ? transferToId : null,
       kind,
       amount: Number(amount) || 0,
       occurred_on: date,
@@ -571,32 +578,59 @@ function TransactionDialog({ tx, defaultKind, onClose }: { tx: Transaction | nul
             <SelectContent>
               <SelectItem value="income">Einnahme</SelectItem>
               <SelectItem value="expense">Ausgabe</SelectItem>
+              <SelectItem value="transfer">↔ Umbuchung (neutral)</SelectItem>
             </SelectContent>
           </Select>
         </div>
         <div>
-          <Label>Konto (Pflicht)</Label>
+          <Label>{isTransfer ? "Von Konto (Quelle)" : "Konto (Pflicht)"}</Label>
           <Select value={accountId} onValueChange={setAccountId}>
             <SelectTrigger><SelectValue placeholder="Konto wählen" /></SelectTrigger>
             <SelectContent>
-              {bankAccounts.map((a) => <SelectItem key={a.id} value={a.id}>{effectiveAccountIcon(a)} {a.name}{a.type === "clearing" ? " (Verrechnung)" : ""}</SelectItem>)}
+              {(isTransfer ? allTransferAccounts : bankAccounts).map((a) => (
+                <SelectItem key={a.id} value={a.id}>
+                  {effectiveAccountIcon(a)} {a.name}{a.type === "clearing" ? " (Verrechnung)" : ""}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {selectedAccount?.type === "clearing"
-              ? "Verrechnungskonto: zählt nicht zur Liquidität, beeinflusst aber den verknüpften Kredit."
-              : "Geld fließt von / zu diesem Bankkonto."}
-          </p>
+          {!isTransfer && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              {selectedAccount?.type === "clearing"
+                ? "Verrechnungskonto: zählt nicht zur Liquidität, beeinflusst aber den verknüpften Kredit."
+                : "Geld fließt von / zu diesem Bankkonto."}
+            </p>
+          )}
         </div>
-        <div>
-          <Label>Kategorie</Label>
-          <Select value={categoryId} onValueChange={setCategoryId}>
-            <SelectTrigger><SelectValue placeholder="Kategorie wählen" /></SelectTrigger>
-            <SelectContent>
-              {filteredCats.map((c) => <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
+        {isTransfer && (
+          <div>
+            <Label>Auf Konto (Ziel)</Label>
+            <Select value={transferToId} onValueChange={setTransferToId}>
+              <SelectTrigger><SelectValue placeholder="Zielkonto wählen" /></SelectTrigger>
+              <SelectContent>
+                {allTransferAccounts.filter((a) => a.id !== accountId).map((a) => (
+                  <SelectItem key={a.id} value={a.id}>
+                    {effectiveAccountIcon(a)} {a.name}{a.type === "clearing" ? " (Verrechnung)" : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Umbuchungen zählen nicht als Einnahme oder Ausgabe — z.B. Tilgung einer Karte mit einem neuen Kredit.
+            </p>
+          </div>
+        )}
+        {!isTransfer && (
+          <div>
+            <Label>Kategorie</Label>
+            <Select value={categoryId} onValueChange={setCategoryId}>
+              <SelectTrigger><SelectValue placeholder="Kategorie wählen" /></SelectTrigger>
+              <SelectContent>
+                {filteredCats.map((c) => <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label>Betrag (€)</Label>
@@ -611,25 +645,27 @@ function TransactionDialog({ tx, defaultKind, onClose }: { tx: Transaction | nul
           <Label>Beschreibung</Label>
           <Input value={note} onChange={(e) => setNote(e.target.value)} />
         </div>
-        <div>
-          <Label>Verknüpfter Kredit / Kreditkarte / Darlehen (optional)</Label>
-          <Select value={loanAccountId} onValueChange={setLoanAccountId}>
-            <SelectTrigger><SelectValue placeholder="Keiner" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">Keiner</SelectItem>
-              {loanAccounts.map((a) => (
-                <SelectItem key={a.id} value={a.id}>
-                  {loanIcon(a.type)} {loanLabel(a.type)}: {a.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {kind === "income"
-              ? "Z.B. wenn diese Einnahme eine Kredit- oder Darlehensauszahlung ist."
-              : "Z.B. wenn diese Ausgabe eine Rate / Tilgung für einen Kredit, ein Darlehen oder eine Kreditkarten-Zahlung ist."}
-          </p>
-        </div>
+        {!isTransfer && (
+          <div>
+            <Label>Verknüpfter Kredit / Kreditkarte / Darlehen (optional)</Label>
+            <Select value={loanAccountId} onValueChange={setLoanAccountId}>
+              <SelectTrigger><SelectValue placeholder="Keiner" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Keiner</SelectItem>
+                {loanAccounts.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>
+                    {loanIcon(a.type)} {loanLabel(a.type)}: {a.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {kind === "income"
+                ? "Z.B. wenn diese Einnahme eine Kredit- oder Darlehensauszahlung ist."
+                : "Z.B. wenn diese Ausgabe eine Rate / Tilgung für einen Kredit, ein Darlehen oder eine Kreditkarten-Zahlung ist."}
+            </p>
+          </div>
+        )}
         <Button type="submit" className="w-full" disabled={busy}>Speichern</Button>
       </form>
     </DialogContent>
