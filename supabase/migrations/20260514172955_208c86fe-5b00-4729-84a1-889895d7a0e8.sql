@@ -1,0 +1,1 @@
+ALTER TABLE public.recurring_rules ADD COLUMN IF NOT EXISTS archived boolean NOT NULL DEFAULT false;
