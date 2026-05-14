@@ -63,6 +63,7 @@ export type Database = {
           created_at: string
           icon: string
           id: string
+          is_system: boolean
           kind: Database["public"]["Enums"]["category_kind"]
           name: string
           user_id: string
@@ -73,6 +74,7 @@ export type Database = {
           created_at?: string
           icon?: string
           id?: string
+          is_system?: boolean
           kind: Database["public"]["Enums"]["category_kind"]
           name: string
           user_id: string
@@ -83,6 +85,7 @@ export type Database = {
           created_at?: string
           icon?: string
           id?: string
+          is_system?: boolean
           kind?: Database["public"]["Enums"]["category_kind"]
           name?: string
           user_id?: string
