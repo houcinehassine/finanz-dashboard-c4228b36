@@ -18,9 +18,10 @@ function AccountDetailPage() {
   const balances = useAccountBalances();
   const cats = useCategories();
   const account = (balances.data ?? []).find((a) => a.id === accountId);
-  const isLoanLike = account?.type === "loan" || account?.type === "credit_card" || account?.type === "darlehen";
+  const isLoanLike = account?.type === "loan" || account?.type === "darlehen";
+  const isCreditCard = account?.type === "credit_card";
   const txs = useTransactions(
-    isLoanLike ? { loanAccountId: accountId } : { accountId },
+    isLoanLike ? { loanAccountId: accountId } : isCreditCard ? { anyAccountId: accountId } : { accountId },
   );
 
   const catById = useMemo(
