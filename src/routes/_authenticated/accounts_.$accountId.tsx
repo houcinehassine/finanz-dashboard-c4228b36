@@ -154,11 +154,21 @@ function AccountDetailPage() {
         </div>
       </Card>
 
-      {/* KPIs */}
+      {/* KPIs — derived from linked transactions */}
       <div className="grid gap-3 sm:grid-cols-3">
-        <KpiCard icon={<TrendingDown className="h-4 w-4" />} label="Ausgaben (Jahr)" value={fmtEUR(yearStats.totalExpense)} hint="12 Monate" valueClass="text-red-500" />
-        <KpiCard icon={<Activity className="h-4 w-4" />} label="Ø Betrag" value={fmtEUR(yearStats.avg)} hint="monatlich" />
-        <KpiCard icon={<Hash className="h-4 w-4" />} label="Anzahl" value={String(yearStats.count)} hint={`${yearStats.months} aktive Monate`} />
+        {isLoanLike ? (
+          <>
+            <KpiCard icon={<TrendingDown className="h-4 w-4" />} label="Tilgung gesamt" value={fmtEUR(stats.positive)} hint={`${stats.months} aktive Monate`} valueClass="text-emerald-500" />
+            <KpiCard icon={<Activity className="h-4 w-4" />} label="Auszahlung / Belastung" value={fmtEUR(stats.negative)} hint="aus Buchungen" valueClass="text-red-500" />
+            <KpiCard icon={<Hash className="h-4 w-4" />} label="Buchungen" value={String(stats.count)} hint={`Ø ${fmtEUR(stats.avg)} / Monat`} />
+          </>
+        ) : (
+          <>
+            <KpiCard icon={<TrendingDown className="h-4 w-4" />} label="Einnahmen" value={fmtEUR(stats.positive)} hint={`${stats.months} aktive Monate`} valueClass="text-emerald-500" />
+            <KpiCard icon={<Activity className="h-4 w-4" />} label="Ausgaben" value={fmtEUR(stats.negative)} hint="aus Buchungen" valueClass="text-red-500" />
+            <KpiCard icon={<Hash className="h-4 w-4" />} label="Buchungen" value={String(stats.count)} hint={`Ø ${fmtEUR(stats.avg)} / Monat`} />
+          </>
+        )}
       </div>
 
       {/* Chart */}
