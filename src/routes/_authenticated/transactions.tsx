@@ -236,21 +236,8 @@ function TransactionsPage() {
               <SelectItem value="all">Alle Kategorien</SelectItem>
               {(categories.data ?? [])
                 .filter((c) => view === "all" || c.kind === view)
+                .filter((c) => availableCategoryIds.has(c.id) || c.id === filterCategory)
                 .map((c) => <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={filterMonth} onValueChange={setFilterMonth}>
-            <SelectTrigger className="w-auto min-w-[7rem] gap-2"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Alle Monate</SelectItem>
-              {MONTHS_DE.map((m, i) => <SelectItem key={m} value={String(i + 1)}>{m}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={filterYear} onValueChange={setFilterYear}>
-            <SelectTrigger className="w-auto min-w-[7rem] gap-2"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Alle Jahre</SelectItem>
-              {YEARS.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
             </SelectContent>
           </Select>
           <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
@@ -262,19 +249,60 @@ function TransactionsPage() {
         </div>
       </div>
 
-      <div className="space-y-2">
-        <div className={ymActive ? "opacity-60" : ""}>
-          <DateRangePicker value={range} onChange={setRange} />
-        </div>
-        {ymActive && (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span>Monat/Jahr-Filter überschreibt den Zeitraum.</span>
-            <Button variant="ghost" size="sm" onClick={() => { setFilterYear("all"); setFilterMonth("all"); }}>
-              Zurücksetzen
-            </Button>
+      <Card className="p-3">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          {/* Left: Month / Year */}
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-muted-foreground">
+              <CalendarRange className="h-4 w-4" /> Monat / Jahr
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Select value={filterMonth} onValueChange={setFilterMonth}>
+                <SelectTrigger className="h-9 w-36"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Alle Monate</SelectItem>
+                  {availableMonths.map((m) => (
+                    <SelectItem key={m} value={String(m)}>{MONTHS_DE[m - 1]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={filterYear} onValueChange={setFilterYear}>
+                <SelectTrigger className="h-9 w-28"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Alle Jahre</SelectItem>
+                  {availableYears.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              {ymActive && (
+                <Button variant="ghost" size="sm" onClick={() => { setFilterYear("all"); setFilterMonth("all"); }}>
+                  Zurücksetzen
+                </Button>
+              )}
+            </div>
           </div>
-        )}
-      </div>
+
+          {/* Right: Eigene Dauer */}
+          <div className={`flex flex-col gap-2 ${ymActive ? "opacity-50 pointer-events-none" : ""}`}>
+            <div className="text-xs uppercase tracking-widest text-muted-foreground">Eigene Dauer</div>
+            <div className="flex flex-wrap gap-1">
+              {PRESETS.map((p) => {
+                const active = range.amount === p.value.amount && range.unit === p.value.unit;
+                return (
+                  <Button
+                    key={p.label}
+                    type="button"
+                    size="sm"
+                    variant={active ? "default" : "outline"}
+                    onClick={() => setRange(p.value)}
+                  >
+                    {p.label}
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </Card>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card className="p-5">
