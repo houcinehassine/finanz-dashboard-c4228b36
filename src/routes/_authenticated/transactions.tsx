@@ -16,9 +16,23 @@ import { useAccounts, useCategories, useTransactions, type Transaction } from "@
 import { fmtEUR, fmtDate } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { Plus, Trash2, Pencil, X, Copy } from "lucide-react";
-import { DateRangePicker, DEFAULT_RANGE, rangeToFromTo, type RangeValue } from "@/components/DateRangePicker";
+import { Plus, Trash2, Pencil, X, Copy, CalendarRange } from "lucide-react";
 import { toast } from "sonner";
+
+type RelRange = { amount: number; unit: "month" | "year" };
+const PRESETS: { label: string; value: RelRange }[] = [
+  { label: "1 Monat",  value: { amount: 1, unit: "month" } },
+  { label: "3 Monate", value: { amount: 3, unit: "month" } },
+  { label: "6 Monate", value: { amount: 6, unit: "month" } },
+  { label: "1 Jahr",   value: { amount: 1, unit: "year" } },
+];
+function relToFromTo(r: RelRange): { from: string; to: string } {
+  const to = new Date();
+  const from = new Date();
+  if (r.unit === "month") from.setMonth(from.getMonth() - r.amount);
+  else from.setFullYear(from.getFullYear() - r.amount);
+  return { from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10) };
+}
 
 export const Route = createFileRoute("/_authenticated/transactions")({
   component: TransactionsPage,
