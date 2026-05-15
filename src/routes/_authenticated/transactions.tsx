@@ -420,8 +420,8 @@ function BulkEditDialog({ open, onOpenChange, ids, onDone }: { open: boolean; on
     }
   }, [open]);
 
-  const bankAccounts = (accounts.data ?? []).filter((a) => a.type === "checking" || a.type === "savings" || a.type === "clearing");
-  const loanAccounts = (accounts.data ?? []).filter((a) => a.type === "loan" || a.type === "credit_card" || a.type === "darlehen");
+  const bankAccounts = (accounts.data ?? []).filter((a) => a.type === "checking" || a.type === "savings" || a.type === "clearing" || a.type === "credit_card");
+  const loanAccounts = (accounts.data ?? []).filter((a) => a.type === "loan" || a.type === "darlehen");
 
   const submit = async () => {
     if (ids.length === 0) return;
