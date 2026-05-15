@@ -420,8 +420,8 @@ function BulkEditDialog({ open, onOpenChange, ids, onDone }: { open: boolean; on
     }
   }, [open]);
 
-  const bankAccounts = (accounts.data ?? []).filter((a) => a.type === "checking" || a.type === "savings" || a.type === "clearing");
-  const loanAccounts = (accounts.data ?? []).filter((a) => a.type === "loan" || a.type === "credit_card" || a.type === "darlehen");
+  const bankAccounts = (accounts.data ?? []).filter((a) => a.type === "checking" || a.type === "savings" || a.type === "clearing" || a.type === "credit_card");
+  const loanAccounts = (accounts.data ?? []).filter((a) => a.type === "loan" || a.type === "darlehen");
 
   const submit = async () => {
     if (ids.length === 0) return;
@@ -541,12 +541,12 @@ function TransactionDialog({ tx, defaultKind, onClose }: { tx: Transaction | nul
 
   const isTransfer = kind === "transfer";
   const filteredCats = (categories.data ?? []).filter((c) => c.kind === kind);
-  const bankAccounts = (accounts.data ?? []).filter((a) => a.type === "checking" || a.type === "savings" || a.type === "clearing");
-  const loanAccounts = (accounts.data ?? []).filter((a) => a.type === "loan" || a.type === "credit_card" || a.type === "darlehen");
+  const bankAccounts = (accounts.data ?? []).filter((a) => a.type === "checking" || a.type === "savings" || a.type === "clearing" || a.type === "credit_card");
+  const loanAccounts = (accounts.data ?? []).filter((a) => a.type === "loan" || a.type === "darlehen");
   // For transfers, allow ANY account (bank, clearing, loan, card) on both sides
   const allTransferAccounts = (accounts.data ?? []).filter((a) => !a.archived);
-  const loanIcon = (t: string) => t === "credit_card" ? "💳" : t === "darlehen" ? "🤝" : "🏦";
-  const loanLabel = (t: string) => t === "credit_card" ? "Karte" : t === "darlehen" ? "Darlehen" : "Kredit";
+  const loanIcon = (t: string) => t === "darlehen" ? "🤝" : "🏦";
+  const loanLabel = (t: string) => t === "darlehen" ? "Darlehen" : "Kredit";
 
   const selectedAccount = (accounts.data ?? []).find((a) => a.id === accountId);
   const effectiveAccountIcon = (a: { type: string }) =>

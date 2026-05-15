@@ -363,8 +363,8 @@ function RuleDialog({ rule, onClose }: { rule: Partial<RecurringRule> | null; on
   const [busy, setBusy] = useState(false);
 
   const filteredCats = (categories.data ?? []).filter((c) => c.kind === kind);
-  const bankAccounts = (accounts.data ?? []).filter((a) => a.type === "checking" || a.type === "savings");
-  const loanAccounts = (accounts.data ?? []).filter((a) => a.type === "loan" || a.type === "credit_card" || a.type === "darlehen");
+  const bankAccounts = (accounts.data ?? []).filter((a) => a.type === "checking" || a.type === "savings" || a.type === "credit_card");
+  const loanAccounts = (accounts.data ?? []).filter((a) => a.type === "loan" || a.type === "darlehen");
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
