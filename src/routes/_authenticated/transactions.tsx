@@ -16,9 +16,23 @@ import { useAccounts, useCategories, useTransactions, type Transaction } from "@
 import { fmtEUR, fmtDate } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { Plus, Trash2, Pencil, X, Copy } from "lucide-react";
-import { DateRangePicker, DEFAULT_RANGE, rangeToFromTo, type RangeValue } from "@/components/DateRangePicker";
+import { Plus, Trash2, Pencil, X, Copy, CalendarRange } from "lucide-react";
 import { toast } from "sonner";
+
+type RelRange = { amount: number; unit: "month" | "year" };
+const PRESETS: { label: string; value: RelRange }[] = [
+  { label: "1 Monat",  value: { amount: 1, unit: "month" } },
+  { label: "3 Monate", value: { amount: 3, unit: "month" } },
+  { label: "6 Monate", value: { amount: 6, unit: "month" } },
+  { label: "1 Jahr",   value: { amount: 1, unit: "year" } },
+];
+function relToFromTo(r: RelRange): { from: string; to: string } {
+  const to = new Date();
+  const from = new Date();
+  if (r.unit === "month") from.setMonth(from.getMonth() - r.amount);
+  else from.setFullYear(from.getFullYear() - r.amount);
+  return { from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10) };
+}
 
 export const Route = createFileRoute("/_authenticated/transactions")({
   component: TransactionsPage,
@@ -32,10 +46,14 @@ function TransactionsPage() {
   const [view, setView] = useState<ViewKind>("all");
   const [filterAccount, setFilterAccount] = useState<string>("all");
   const [filterCategory, setFilterCategory] = useState<string>("all");
-  const [range, setRange] = useState<RangeValue>({ mode: "relative", amount: 3, unit: "month" });
+  const [range, setRange] = useState<RelRange>({ amount: 3, unit: "month" });
   const now = new Date();
   const [filterYear, setFilterYear] = useState<string>("all");
   const [filterMonth, setFilterMonth] = useState<string>("all");
+
+  // All transactions (for deriving available filter options)
+  const allTxs = useTransactions();
+
   const { from, to } = useMemo(() => {
     if (filterYear !== "all") {
       const y = Number(filterYear);
@@ -54,7 +72,7 @@ function TransactionsPage() {
       const pad = (n: number) => (n < 10 ? `0${n}` : String(n));
       return { from: `${y}-${pad(m)}-01`, to: `${y}-${pad(m)}-${pad(last)}` };
     }
-    return rangeToFromTo(range);
+    return relToFromTo(range);
   }, [range, filterYear, filterMonth]);
   const ymActive = filterYear !== "all" || filterMonth !== "all";
   const txs = useTransactions({
@@ -63,10 +81,26 @@ function TransactionsPage() {
     from,
     to,
   });
-  const YEARS = useMemo(() => {
-    const cy = now.getFullYear();
-    return Array.from({ length: 11 }, (_, i) => cy - 8 + i);
-  }, []);
+
+  // Years available: from oldest tx year to current
+  const availableYears = useMemo(() => {
+    const ys = new Set<number>();
+    for (const t of allTxs.data ?? []) ys.add(Number(t.occurred_on.slice(0, 4)));
+    if (ys.size === 0) return [now.getFullYear()];
+    const min = Math.min(...ys);
+    const max = Math.max(now.getFullYear(), Math.max(...ys));
+    return Array.from({ length: max - min + 1 }, (_, i) => max - i);
+  }, [allTxs.data]);
+
+  // Months available (within selected year, or any year if none chosen)
+  const availableMonths = useMemo(() => {
+    const ms = new Set<number>();
+    for (const t of allTxs.data ?? []) {
+      if (filterYear !== "all" && t.occurred_on.slice(0, 4) !== filterYear) continue;
+      ms.add(Number(t.occurred_on.slice(5, 7)));
+    }
+    return Array.from(ms).sort((a, b) => a - b);
+  }, [allTxs.data, filterYear]);
   const MONTHS_DE = ["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -74,6 +108,16 @@ function TransactionsPage() {
 
   const accountById = useMemo(() => Object.fromEntries((accounts.data ?? []).map((a) => [a.id, a])), [accounts.data]);
   const catById = useMemo(() => Object.fromEntries((categories.data ?? []).map((c) => [c.id, c])), [categories.data]);
+
+  // Categories available: only those used in transactions matching current view + account + date filters
+  const availableCategoryIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const t of txs.data ?? []) {
+      if (view !== "all" && t.kind !== view) continue;
+      if (t.category_id) ids.add(t.category_id);
+    }
+    return ids;
+  }, [txs.data, view]);
 
   const filtered = useMemo(
     () => (txs.data ?? []).filter((t) => view === "all" || t.kind === view),
@@ -192,21 +236,8 @@ function TransactionsPage() {
               <SelectItem value="all">Alle Kategorien</SelectItem>
               {(categories.data ?? [])
                 .filter((c) => view === "all" || c.kind === view)
+                .filter((c) => availableCategoryIds.has(c.id) || c.id === filterCategory)
                 .map((c) => <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={filterMonth} onValueChange={setFilterMonth}>
-            <SelectTrigger className="w-auto min-w-[7rem] gap-2"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Alle Monate</SelectItem>
-              {MONTHS_DE.map((m, i) => <SelectItem key={m} value={String(i + 1)}>{m}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={filterYear} onValueChange={setFilterYear}>
-            <SelectTrigger className="w-auto min-w-[7rem] gap-2"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Alle Jahre</SelectItem>
-              {YEARS.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
             </SelectContent>
           </Select>
           <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
@@ -218,19 +249,60 @@ function TransactionsPage() {
         </div>
       </div>
 
-      <div className="space-y-2">
-        <div className={ymActive ? "opacity-60" : ""}>
-          <DateRangePicker value={range} onChange={setRange} />
-        </div>
-        {ymActive && (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span>Monat/Jahr-Filter überschreibt den Zeitraum.</span>
-            <Button variant="ghost" size="sm" onClick={() => { setFilterYear("all"); setFilterMonth("all"); }}>
-              Zurücksetzen
-            </Button>
+      <Card className="p-3">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          {/* Left: Month / Year */}
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-muted-foreground">
+              <CalendarRange className="h-4 w-4" /> Monat / Jahr
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Select value={filterMonth} onValueChange={setFilterMonth}>
+                <SelectTrigger className="h-9 w-36"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Alle Monate</SelectItem>
+                  {availableMonths.map((m) => (
+                    <SelectItem key={m} value={String(m)}>{MONTHS_DE[m - 1]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={filterYear} onValueChange={setFilterYear}>
+                <SelectTrigger className="h-9 w-28"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Alle Jahre</SelectItem>
+                  {availableYears.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              {ymActive && (
+                <Button variant="ghost" size="sm" onClick={() => { setFilterYear("all"); setFilterMonth("all"); }}>
+                  Zurücksetzen
+                </Button>
+              )}
+            </div>
           </div>
-        )}
-      </div>
+
+          {/* Right: Eigene Dauer */}
+          <div className={`flex flex-col gap-2 ${ymActive ? "opacity-50 pointer-events-none" : ""}`}>
+            <div className="text-xs uppercase tracking-widest text-muted-foreground">Eigene Dauer</div>
+            <div className="flex flex-wrap gap-1">
+              {PRESETS.map((p) => {
+                const active = range.amount === p.value.amount && range.unit === p.value.unit;
+                return (
+                  <Button
+                    key={p.label}
+                    type="button"
+                    size="sm"
+                    variant={active ? "default" : "outline"}
+                    onClick={() => setRange(p.value)}
+                  >
+                    {p.label}
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </Card>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card className="p-5">
