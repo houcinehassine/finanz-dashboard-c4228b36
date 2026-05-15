@@ -46,10 +46,14 @@ function TransactionsPage() {
   const [view, setView] = useState<ViewKind>("all");
   const [filterAccount, setFilterAccount] = useState<string>("all");
   const [filterCategory, setFilterCategory] = useState<string>("all");
-  const [range, setRange] = useState<RangeValue>({ mode: "relative", amount: 3, unit: "month" });
+  const [range, setRange] = useState<RelRange>({ amount: 3, unit: "month" });
   const now = new Date();
   const [filterYear, setFilterYear] = useState<string>("all");
   const [filterMonth, setFilterMonth] = useState<string>("all");
+
+  // All transactions (for deriving available filter options)
+  const allTxs = useTransactions();
+
   const { from, to } = useMemo(() => {
     if (filterYear !== "all") {
       const y = Number(filterYear);
@@ -68,7 +72,7 @@ function TransactionsPage() {
       const pad = (n: number) => (n < 10 ? `0${n}` : String(n));
       return { from: `${y}-${pad(m)}-01`, to: `${y}-${pad(m)}-${pad(last)}` };
     }
-    return rangeToFromTo(range);
+    return relToFromTo(range);
   }, [range, filterYear, filterMonth]);
   const ymActive = filterYear !== "all" || filterMonth !== "all";
   const txs = useTransactions({
@@ -77,10 +81,26 @@ function TransactionsPage() {
     from,
     to,
   });
-  const YEARS = useMemo(() => {
-    const cy = now.getFullYear();
-    return Array.from({ length: 11 }, (_, i) => cy - 8 + i);
-  }, []);
+
+  // Years available: from oldest tx year to current
+  const availableYears = useMemo(() => {
+    const ys = new Set<number>();
+    for (const t of allTxs.data ?? []) ys.add(Number(t.occurred_on.slice(0, 4)));
+    if (ys.size === 0) return [now.getFullYear()];
+    const min = Math.min(...ys);
+    const max = Math.max(now.getFullYear(), Math.max(...ys));
+    return Array.from({ length: max - min + 1 }, (_, i) => max - i);
+  }, [allTxs.data]);
+
+  // Months available (within selected year, or any year if none chosen)
+  const availableMonths = useMemo(() => {
+    const ms = new Set<number>();
+    for (const t of allTxs.data ?? []) {
+      if (filterYear !== "all" && t.occurred_on.slice(0, 4) !== filterYear) continue;
+      ms.add(Number(t.occurred_on.slice(5, 7)));
+    }
+    return Array.from(ms).sort((a, b) => a - b);
+  }, [allTxs.data, filterYear]);
   const MONTHS_DE = ["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -88,6 +108,16 @@ function TransactionsPage() {
 
   const accountById = useMemo(() => Object.fromEntries((accounts.data ?? []).map((a) => [a.id, a])), [accounts.data]);
   const catById = useMemo(() => Object.fromEntries((categories.data ?? []).map((c) => [c.id, c])), [categories.data]);
+
+  // Categories available: only those used in transactions matching current view + account + date filters
+  const availableCategoryIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const t of txs.data ?? []) {
+      if (view !== "all" && t.kind !== view) continue;
+      if (t.category_id) ids.add(t.category_id);
+    }
+    return ids;
+  }, [txs.data, view]);
 
   const filtered = useMemo(
     () => (txs.data ?? []).filter((t) => view === "all" || t.kind === view),
