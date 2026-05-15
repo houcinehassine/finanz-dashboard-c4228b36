@@ -239,7 +239,7 @@ function AccountDialog({ account, onClose }: { account: Partial<Account> | null;
   const [icon, setIcon] = useState(account?.icon ?? defaultIcon((account?.type as Account["type"]) ?? "checking"));
   const [busy, setBusy] = useState(false);
 
-  const loanTargets = (accountsQ.data ?? []).filter((a) => a.type === "loan" || a.type === "darlehen" || a.type === "credit_card");
+  const loanTargets = (accountsQ.data ?? []).filter((a) => a.type === "loan" || a.type === "darlehen");
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
