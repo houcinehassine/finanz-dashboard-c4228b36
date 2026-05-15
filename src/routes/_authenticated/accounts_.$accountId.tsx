@@ -48,18 +48,23 @@ function AccountDetailPage() {
     return [...rawList, ...inbound].sort((a, b) => b.occurred_on.localeCompare(a.occurred_on));
   }, [rawList, allTxs.data, accountId]);
 
-  // Year stats
-  const yearStats = useMemo(() => {
-    const now = new Date();
-    const yearAgo = new Date(now);
-    yearAgo.setMonth(yearAgo.getMonth() - 12);
-    const recent = tList.filter((t) => new Date(t.occurred_on) >= yearAgo && t.kind !== "transfer");
-    const expenses = recent.filter((t) => t.kind === "expense");
-    const totalExpense = expenses.reduce((s, t) => s + t.amount, 0);
-    const months = new Set(recent.map((t) => t.occurred_on.slice(0, 7)));
-    const avg = months.size > 0 ? totalExpense / months.size : 0;
-    return { totalExpense, avg, months: months.size, count: recent.length };
-  }, [tList]);
+  // Stats derived from ALL linked transactions (reactive to data)
+  const stats = useMemo(() => {
+    let positive = 0; // for bank: income; for loan-like: Tilgung (reduces debt)
+    let negative = 0; // for bank: expense; for loan-like: Auszahlung (increases debt)
+    const months = new Set<string>();
+    for (const t of tList) {
+      const s = signFor(t);
+      if (s === 0) continue;
+      const v = s * t.amount;
+      if (v >= 0) positive += v;
+      else negative += -v;
+      months.add(t.occurred_on.slice(0, 7));
+    }
+    const total = positive + negative;
+    const avg = months.size > 0 ? total / months.size : 0;
+    return { positive, negative, avg, months: months.size, count: tList.length };
+  }, [tList, isLoanLike, accountId]);
 
   // Saldo-Verlauf: monthly running balance backwards from current
   const series = useMemo(() => {
@@ -149,11 +154,21 @@ function AccountDetailPage() {
         </div>
       </Card>
 
-      {/* KPIs */}
+      {/* KPIs — derived from linked transactions */}
       <div className="grid gap-3 sm:grid-cols-3">
-        <KpiCard icon={<TrendingDown className="h-4 w-4" />} label="Ausgaben (Jahr)" value={fmtEUR(yearStats.totalExpense)} hint="12 Monate" valueClass="text-red-500" />
-        <KpiCard icon={<Activity className="h-4 w-4" />} label="Ø Betrag" value={fmtEUR(yearStats.avg)} hint="monatlich" />
-        <KpiCard icon={<Hash className="h-4 w-4" />} label="Anzahl" value={String(yearStats.count)} hint={`${yearStats.months} aktive Monate`} />
+        {isLoanLike ? (
+          <>
+            <KpiCard icon={<TrendingDown className="h-4 w-4" />} label="Tilgung gesamt" value={fmtEUR(stats.positive)} hint={`${stats.months} aktive Monate`} valueClass="text-emerald-500" />
+            <KpiCard icon={<Activity className="h-4 w-4" />} label="Auszahlung / Belastung" value={fmtEUR(stats.negative)} hint="aus Buchungen" valueClass="text-red-500" />
+            <KpiCard icon={<Hash className="h-4 w-4" />} label="Buchungen" value={String(stats.count)} hint={`Ø ${fmtEUR(stats.avg)} / Monat`} />
+          </>
+        ) : (
+          <>
+            <KpiCard icon={<TrendingDown className="h-4 w-4" />} label="Einnahmen" value={fmtEUR(stats.positive)} hint={`${stats.months} aktive Monate`} valueClass="text-emerald-500" />
+            <KpiCard icon={<Activity className="h-4 w-4" />} label="Ausgaben" value={fmtEUR(stats.negative)} hint="aus Buchungen" valueClass="text-red-500" />
+            <KpiCard icon={<Hash className="h-4 w-4" />} label="Buchungen" value={String(stats.count)} hint={`Ø ${fmtEUR(stats.avg)} / Monat`} />
+          </>
+        )}
       </div>
 
       {/* Chart */}
