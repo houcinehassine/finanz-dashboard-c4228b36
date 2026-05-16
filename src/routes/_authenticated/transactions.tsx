@@ -631,7 +631,7 @@ function BulkEditDialog({ open, onOpenChange, ids, onDone }: { open: boolean; on
   );
 }
 
-function TransactionDialog({ tx, defaultKind, onClose }: { tx: Transaction | null; defaultKind?: Transaction["kind"]; onClose: () => void }) {
+export function TransactionDialog({ tx, defaultKind, onClose }: { tx: Transaction | null; defaultKind?: Transaction["kind"]; onClose: () => void }) {
   const { user } = useAuth();
   const accounts = useAccounts();
   const categories = useCategories();
