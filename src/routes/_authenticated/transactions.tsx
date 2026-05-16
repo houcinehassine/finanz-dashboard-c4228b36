@@ -241,7 +241,9 @@ function TransactionsPage() {
             <SelectTrigger className="w-auto min-w-[7rem] gap-2"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Alle Konten</SelectItem>
-              {(accounts.data ?? []).map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
+              {(accounts.data ?? [])
+                .filter((a) => !a.archived && (usedAccountIds.has(a.id) || a.id === filterAccount))
+                .map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={filterCategory} onValueChange={setFilterCategory}>
