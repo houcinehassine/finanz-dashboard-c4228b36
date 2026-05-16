@@ -23,12 +23,48 @@ function AccountDetailPage() {
   const { accountId } = Route.useParams();
   const balances = useAccountBalances();
   const cats = useCategories();
+  const qc = useQueryClient();
+  const { user } = useAuth();
   const account = (balances.data ?? []).find((a) => a.id === accountId);
   const isLoanLike = account?.type === "loan" || account?.type === "darlehen";
   const isCreditCard = account?.type === "credit_card";
   const txs = useTransactions(
     isLoanLike ? { loanAccountId: accountId } : isCreditCard ? { anyAccountId: accountId } : { accountId },
   );
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingTx, setEditingTx] = useState<Transaction | null>(null);
+
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ["transactions"] });
+    qc.invalidateQueries({ queryKey: ["account_balances"] });
+    qc.invalidateQueries({ queryKey: ["monthly_summary"] });
+  };
+
+  const onDelete = async (id: string) => {
+    if (!confirm("Buchung wirklich löschen?")) return;
+    const { error } = await supabase.from("transactions").delete().eq("id", id);
+    if (error) toast.error(error.message);
+    else { toast.success("Gelöscht"); refresh(); }
+  };
+
+  const onDuplicate = async (t: Transaction) => {
+    if (!user) return;
+    const { error } = await supabase.from("transactions").insert({
+      user_id: user.id,
+      account_id: t.account_id,
+      category_id: t.category_id,
+      loan_account_id: t.loan_account_id,
+      kind: t.kind,
+      amount: t.amount,
+      occurred_on: t.occurred_on,
+      note: t.note,
+      interest_amount: t.interest_amount,
+      is_anyfin: t.is_anyfin,
+      transfer_to_account_id: t.transfer_to_account_id,
+    });
+    if (error) toast.error(error.message);
+    else { toast.success("Dupliziert"); refresh(); }
+  };
 
   const catById = useMemo(
     () => Object.fromEntries((cats.data ?? []).map((c) => [c.id, c])),
