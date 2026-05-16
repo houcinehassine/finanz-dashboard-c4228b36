@@ -267,30 +267,48 @@ function TransactionsPage() {
 
       <Card className="p-3">
         <div className="flex flex-wrap items-start justify-between gap-4">
-          {/* Left: Month / Year */}
+          {/* Left: Von Monat/Jahr - Bis Monat/Jahr */}
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-muted-foreground">
-              <CalendarRange className="h-4 w-4" /> Monat / Jahr
+              <CalendarRange className="h-4 w-4" /> Von / Bis
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Select value={filterMonth} onValueChange={setFilterMonth}>
-                <SelectTrigger className="h-9 w-36"><SelectValue /></SelectTrigger>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-muted-foreground">Von</span>
+              <Select value={fromMonth} onValueChange={setFromMonth}>
+                <SelectTrigger className="h-9 w-32"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Alle Monate</SelectItem>
-                  {availableMonths.map((m) => (
+                  <SelectItem value="all">Monat</SelectItem>
+                  {fromAvailableMonths.map((m) => (
                     <SelectItem key={m} value={String(m)}>{MONTHS_DE[m - 1]}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={filterYear} onValueChange={setFilterYear}>
-                <SelectTrigger className="h-9 w-28"><SelectValue /></SelectTrigger>
+              <Select value={fromYear} onValueChange={setFromYear}>
+                <SelectTrigger className="h-9 w-24"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Alle Jahre</SelectItem>
+                  <SelectItem value="all">Jahr</SelectItem>
+                  {availableYears.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <span className="text-xs text-muted-foreground">Bis</span>
+              <Select value={toMonth} onValueChange={setToMonth}>
+                <SelectTrigger className="h-9 w-32"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Monat</SelectItem>
+                  {toAvailableMonths.map((m) => (
+                    <SelectItem key={m} value={String(m)}>{MONTHS_DE[m - 1]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={toYear} onValueChange={setToYear}>
+                <SelectTrigger className="h-9 w-24"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Jahr</SelectItem>
                   {availableYears.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
                 </SelectContent>
               </Select>
               {ymActive && (
-                <Button variant="ghost" size="sm" onClick={() => { setFilterYear("all"); setFilterMonth("all"); }}>
+                <Button variant="ghost" size="sm" onClick={() => { setFromYear("all"); setFromMonth("all"); setToYear("all"); setToMonth("all"); }}>
                   Zurücksetzen
                 </Button>
               )}
