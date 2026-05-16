@@ -258,7 +258,12 @@ function AccountDetailPage() {
 
       {/* Transactions */}
       <Card className="p-0 overflow-hidden">
-        <div className="border-b px-4 py-3 text-[11px] uppercase tracking-wider text-muted-foreground">Verknüpfte Buchungen</div>
+        <div className="flex items-center justify-between border-b px-4 py-3">
+          <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Verknüpfte Buchungen</div>
+          <Button size="sm" onClick={() => { setEditingTx(null); setDialogOpen(true); }}>
+            <Plus className="mr-2 h-4 w-4" />Neue Buchung
+          </Button>
+        </div>
         {tList.length === 0 ? (
           <div className="p-8 text-center text-sm text-muted-foreground">Keine Buchungen gefunden</div>
         ) : (
@@ -271,20 +276,28 @@ function AccountDetailPage() {
                   <th className="px-4 py-2 text-left font-medium">Bezeichnung</th>
                   <th className="px-4 py-2 text-left font-medium">Kategorie</th>
                   <th className="px-4 py-2 text-right font-medium">Betrag</th>
+                  <th className="px-4 py-2 text-right font-medium">Aktionen</th>
                 </tr>
               </thead>
               <tbody>
                 {tList.map((t) => {
                   const c = t.category_id ? catById[t.category_id] : null;
-                  const sign = t.kind === "income" ? "+" : "−";
-                  const cls = t.kind === "income" ? "text-emerald-500" : "text-red-500";
+                  const isTransfer = t.kind === "transfer";
+                  const sign = isTransfer ? "" : t.kind === "income" ? "+" : "−";
+                  const cls = isTransfer ? "text-muted-foreground" : t.kind === "income" ? "text-emerald-500" : "text-red-500";
+                  const typeLbl = isTransfer ? "Umbuchung" : t.kind === "income" ? "Einnahme" : "Ausgabe";
                   return (
                     <tr key={t.id} className="border-t">
                       <td className="px-4 py-2 whitespace-nowrap">{fmtDate(t.occurred_on)}</td>
-                      <td className="px-4 py-2">{t.kind === "income" ? "Einnahme" : "Ausgabe"}</td>
+                      <td className="px-4 py-2">{typeLbl}</td>
                       <td className="px-4 py-2">{t.note || "—"}</td>
                       <td className="px-4 py-2">{c ? `${c.icon} ${c.name}` : "—"}</td>
                       <td className={`px-4 py-2 text-right font-medium ${cls}`}>{sign}{fmtEUR(t.amount)}</td>
+                      <td className="px-4 py-2 text-right whitespace-nowrap">
+                        <Button size="icon" variant="ghost" onClick={() => { setEditingTx(t); setDialogOpen(true); }} title="Bearbeiten"><Pencil className="h-4 w-4" /></Button>
+                        <Button size="icon" variant="ghost" onClick={() => onDuplicate(t)} title="Duplizieren"><Copy className="h-4 w-4" /></Button>
+                        <Button size="icon" variant="ghost" onClick={() => onDelete(t.id)} title="Löschen"><Trash2 className="h-4 w-4" /></Button>
+                      </td>
                     </tr>
                   );
                 })}
@@ -293,6 +306,17 @@ function AccountDetailPage() {
           </div>
         )}
       </Card>
+
+      <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) setEditingTx(null); }}>
+        <TransactionDialog
+          key={editingTx?.id ?? "new"}
+          tx={editingTx}
+          defaultKind={isLoanLike ? "expense" : "expense"}
+          defaultAccountId={isLoanLike ? undefined : accountId}
+          defaultLoanAccountId={isLoanLike ? accountId : undefined}
+          onClose={() => { setDialogOpen(false); setEditingTx(null); refresh(); }}
+        />
+      </Dialog>
 
       <div className="flex justify-end">
         <Button asChild variant="outline">
