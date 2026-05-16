@@ -48,33 +48,35 @@ function TransactionsPage() {
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [range, setRange] = useState<RelRange>({ amount: 3, unit: "month" });
   const now = new Date();
-  const [filterYear, setFilterYear] = useState<string>("all");
-  const [filterMonth, setFilterMonth] = useState<string>("all");
+  const [fromYear, setFromYear] = useState<string>("all");
+  const [fromMonth, setFromMonth] = useState<string>("all");
+  const [toYear, setToYear] = useState<string>("all");
+  const [toMonth, setToMonth] = useState<string>("all");
 
   // All transactions (for deriving available filter options)
   const allTxs = useTransactions();
 
+  const pad = (n: number) => (n < 10 ? `0${n}` : String(n));
+  const ymActive = fromYear !== "all" || fromMonth !== "all" || toYear !== "all" || toMonth !== "all";
+
   const { from, to } = useMemo(() => {
-    if (filterYear !== "all") {
-      const y = Number(filterYear);
-      if (filterMonth !== "all") {
-        const m = Number(filterMonth);
-        const last = new Date(y, m, 0).getDate();
-        const pad = (n: number) => (n < 10 ? `0${n}` : String(n));
-        return { from: `${y}-${pad(m)}-01`, to: `${y}-${pad(m)}-${pad(last)}` };
-      }
-      return { from: `${y}-01-01`, to: `${y}-12-31` };
-    }
-    if (filterMonth !== "all") {
-      const m = Number(filterMonth);
-      const y = now.getFullYear();
-      const last = new Date(y, m, 0).getDate();
-      const pad = (n: number) => (n < 10 ? `0${n}` : String(n));
-      return { from: `${y}-${pad(m)}-01`, to: `${y}-${pad(m)}-${pad(last)}` };
-    }
-    return relToFromTo(range);
-  }, [range, filterYear, filterMonth]);
-  const ymActive = filterYear !== "all" || filterMonth !== "all";
+    if (!ymActive) return relToFromTo(range);
+    const fy = fromYear !== "all" ? Number(fromYear) : null;
+    const fm = fromMonth !== "all" ? Number(fromMonth) : null;
+    const ty = toYear !== "all" ? Number(toYear) : null;
+    const tm = toMonth !== "all" ? Number(toMonth) : null;
+    // Determine fallback bounds from data
+    const dates = (allTxs.data ?? []).map((t) => t.occurred_on).sort();
+    const oldest = dates[0] ?? `${now.getFullYear()}-01-01`;
+    const newest = dates[dates.length - 1] ?? now.toISOString().slice(0, 10);
+    const fyy = fy ?? Number(oldest.slice(0, 4));
+    const fmm = fm ?? 1;
+    const tyy = ty ?? Number(newest.slice(0, 4));
+    const tmm = tm ?? 12;
+    const lastDay = new Date(tyy, tmm, 0).getDate();
+    return { from: `${fyy}-${pad(fmm)}-01`, to: `${tyy}-${pad(tmm)}-${pad(lastDay)}` };
+  }, [range, fromYear, fromMonth, toYear, toMonth, ymActive, allTxs.data]);
+
   const txs = useTransactions({
     accountId: filterAccount === "all" ? undefined : filterAccount,
     categoryId: filterCategory === "all" ? undefined : filterCategory,
@@ -92,16 +94,28 @@ function TransactionsPage() {
     return Array.from({ length: max - min + 1 }, (_, i) => max - i);
   }, [allTxs.data]);
 
-  // Months available (within selected year, or any year if none chosen)
-  const availableMonths = useMemo(() => {
+  const monthsForYear = (yearStr: string) => {
     const ms = new Set<number>();
     for (const t of allTxs.data ?? []) {
-      if (filterYear !== "all" && t.occurred_on.slice(0, 4) !== filterYear) continue;
+      if (yearStr !== "all" && t.occurred_on.slice(0, 4) !== yearStr) continue;
       ms.add(Number(t.occurred_on.slice(5, 7)));
     }
     return Array.from(ms).sort((a, b) => a - b);
-  }, [allTxs.data, filterYear]);
+  };
+  const fromAvailableMonths = useMemo(() => monthsForYear(fromYear), [allTxs.data, fromYear]);
+  const toAvailableMonths = useMemo(() => monthsForYear(toYear), [allTxs.data, toYear]);
   const MONTHS_DE = ["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
+
+  // Account IDs actually used in transactions (any account_id, loan_account_id, or transfer_to)
+  const usedAccountIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const t of allTxs.data ?? []) {
+      if (t.account_id) ids.add(t.account_id);
+      if (t.loan_account_id) ids.add(t.loan_account_id);
+      if (t.transfer_to_account_id) ids.add(t.transfer_to_account_id);
+    }
+    return ids;
+  }, [allTxs.data]);
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(null);
@@ -227,7 +241,9 @@ function TransactionsPage() {
             <SelectTrigger className="w-auto min-w-[7rem] gap-2"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Alle Konten</SelectItem>
-              {(accounts.data ?? []).map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
+              {(accounts.data ?? [])
+                .filter((a) => !a.archived && (usedAccountIds.has(a.id) || a.id === filterAccount))
+                .map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={filterCategory} onValueChange={setFilterCategory}>
@@ -251,30 +267,48 @@ function TransactionsPage() {
 
       <Card className="p-3">
         <div className="flex flex-wrap items-start justify-between gap-4">
-          {/* Left: Month / Year */}
+          {/* Left: Von Monat/Jahr - Bis Monat/Jahr */}
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-muted-foreground">
-              <CalendarRange className="h-4 w-4" /> Monat / Jahr
+              <CalendarRange className="h-4 w-4" /> Von / Bis
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Select value={filterMonth} onValueChange={setFilterMonth}>
-                <SelectTrigger className="h-9 w-36"><SelectValue /></SelectTrigger>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-muted-foreground">Von</span>
+              <Select value={fromMonth} onValueChange={setFromMonth}>
+                <SelectTrigger className="h-9 w-32"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Alle Monate</SelectItem>
-                  {availableMonths.map((m) => (
+                  <SelectItem value="all">Monat</SelectItem>
+                  {fromAvailableMonths.map((m) => (
                     <SelectItem key={m} value={String(m)}>{MONTHS_DE[m - 1]}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={filterYear} onValueChange={setFilterYear}>
-                <SelectTrigger className="h-9 w-28"><SelectValue /></SelectTrigger>
+              <Select value={fromYear} onValueChange={setFromYear}>
+                <SelectTrigger className="h-9 w-24"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Alle Jahre</SelectItem>
+                  <SelectItem value="all">Jahr</SelectItem>
+                  {availableYears.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <span className="text-xs text-muted-foreground">Bis</span>
+              <Select value={toMonth} onValueChange={setToMonth}>
+                <SelectTrigger className="h-9 w-32"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Monat</SelectItem>
+                  {toAvailableMonths.map((m) => (
+                    <SelectItem key={m} value={String(m)}>{MONTHS_DE[m - 1]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={toYear} onValueChange={setToYear}>
+                <SelectTrigger className="h-9 w-24"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Jahr</SelectItem>
                   {availableYears.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
                 </SelectContent>
               </Select>
               {ymActive && (
-                <Button variant="ghost" size="sm" onClick={() => { setFilterYear("all"); setFilterMonth("all"); }}>
+                <Button variant="ghost" size="sm" onClick={() => { setFromYear("all"); setFromMonth("all"); setToYear("all"); setToMonth("all"); }}>
                   Zurücksetzen
                 </Button>
               )}
