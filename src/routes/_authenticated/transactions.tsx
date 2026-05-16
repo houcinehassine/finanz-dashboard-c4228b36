@@ -631,18 +631,18 @@ function BulkEditDialog({ open, onOpenChange, ids, onDone }: { open: boolean; on
   );
 }
 
-function TransactionDialog({ tx, defaultKind, onClose }: { tx: Transaction | null; defaultKind?: Transaction["kind"]; onClose: () => void }) {
+export function TransactionDialog({ tx, defaultKind, defaultAccountId, defaultLoanAccountId, onClose }: { tx: Transaction | null; defaultKind?: Transaction["kind"]; defaultAccountId?: string; defaultLoanAccountId?: string; onClose: () => void }) {
   const { user } = useAuth();
   const accounts = useAccounts();
   const categories = useCategories();
   const [kind, setKind] = useState<Transaction["kind"]>(tx?.kind ?? defaultKind ?? "expense");
-  const [accountId, setAccountId] = useState<string>(tx?.account_id ?? "");
+  const [accountId, setAccountId] = useState<string>(tx?.account_id ?? defaultAccountId ?? "");
   const [transferToId, setTransferToId] = useState<string>(tx?.transfer_to_account_id ?? "");
   const [categoryId, setCategoryId] = useState<string>(tx?.category_id ?? "");
   const [amount, setAmount] = useState(tx ? String(tx.amount) : "");
   const [date, setDate] = useState(tx?.occurred_on ?? new Date().toISOString().slice(0, 10));
   const [note, setNote] = useState(tx?.note ?? "");
-  const [loanAccountId, setLoanAccountId] = useState<string>(tx?.loan_account_id ?? "none");
+  const [loanAccountId, setLoanAccountId] = useState<string>(tx?.loan_account_id ?? defaultLoanAccountId ?? "none");
   const [busy, setBusy] = useState(false);
 
   const isTransfer = kind === "transfer";
