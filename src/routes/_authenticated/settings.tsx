@@ -23,10 +23,25 @@ function SettingsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [tab, setTab] = useState("profile");
+  const [deleting, setDeleting] = useState(false);
+  const deleteAccount = useServerFn(deleteMyAccount);
 
   const logout = async () => {
     await supabase.auth.signOut();
     navigate({ to: "/login", replace: true });
+  };
+
+  const onDelete = async () => {
+    setDeleting(true);
+    try {
+      await deleteAccount({});
+      await supabase.auth.signOut();
+      toast.success("Konto gelöscht");
+      navigate({ to: "/login", replace: true });
+    } catch (e: any) {
+      toast.error(e?.message ?? "Löschen fehlgeschlagen");
+      setDeleting(false);
+    }
   };
 
   return (
