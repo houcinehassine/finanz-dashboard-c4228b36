@@ -1,15 +1,19 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/integrations/supabase/client";
-import { LogOut, User, Globe, FileUp, ListChecks, Tags, Sun, Moon } from "lucide-react";
+import { LogOut, User, Globe, FileUp, ListChecks, Tags, Sun, Moon, Trash2 } from "lucide-react";
 import { CategoriesManager } from "@/components/CategoriesManager";
 import { usePreferences } from "@/lib/preferences";
+import { deleteMyAccount } from "@/lib/account.functions";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   component: SettingsPage,
