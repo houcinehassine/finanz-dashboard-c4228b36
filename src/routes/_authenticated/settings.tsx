@@ -1,15 +1,19 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/integrations/supabase/client";
-import { LogOut, User, Globe, FileUp, ListChecks, Tags, Sun, Moon } from "lucide-react";
+import { LogOut, User, Globe, FileUp, ListChecks, Tags, Sun, Moon, Trash2 } from "lucide-react";
 import { CategoriesManager } from "@/components/CategoriesManager";
 import { usePreferences } from "@/lib/preferences";
+import { deleteMyAccount } from "@/lib/account.functions";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   component: SettingsPage,
@@ -19,10 +23,25 @@ function SettingsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [tab, setTab] = useState("profile");
+  const [deleting, setDeleting] = useState(false);
+  const deleteAccount = useServerFn(deleteMyAccount);
 
   const logout = async () => {
     await supabase.auth.signOut();
     navigate({ to: "/login", replace: true });
+  };
+
+  const onDelete = async () => {
+    setDeleting(true);
+    try {
+      await deleteAccount({});
+      await supabase.auth.signOut();
+      toast.success("Konto gelöscht");
+      navigate({ to: "/login", replace: true });
+    } catch (e: any) {
+      toast.error(e?.message ?? "Löschen fehlgeschlagen");
+      setDeleting(false);
+    }
   };
 
   return (
@@ -56,6 +75,33 @@ function SettingsPage() {
             <Button variant="outline" onClick={logout}>
               <LogOut className="mr-2 h-4 w-4" />Abmelden
             </Button>
+          </Card>
+          <Card className="border-destructive/40 p-5">
+            <h2 className="mb-1 text-sm font-semibold text-destructive">Konto löschen</h2>
+            <p className="mb-3 text-sm text-muted-foreground">
+              Löscht dein Konto und alle zugehörigen Daten (Konten, Buchungen, Regeln, Kategorien). Diese Aktion ist unwiderruflich.
+            </p>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" disabled={deleting}>
+                  <Trash2 className="mr-2 h-4 w-4" />{deleting ? "Wird gelöscht…" : "Konto endgültig löschen"}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Konto wirklich löschen?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Dein Konto ({user?.email}) und alle Daten werden dauerhaft entfernt. Dies kann nicht rückgängig gemacht werden.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                  <AlertDialogAction onClick={onDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Endgültig löschen
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </Card>
         </TabsContent>
 
