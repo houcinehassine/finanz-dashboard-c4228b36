@@ -76,6 +76,33 @@ function SettingsPage() {
               <LogOut className="mr-2 h-4 w-4" />Abmelden
             </Button>
           </Card>
+          <Card className="border-destructive/40 p-5">
+            <h2 className="mb-1 text-sm font-semibold text-destructive">Konto löschen</h2>
+            <p className="mb-3 text-sm text-muted-foreground">
+              Löscht dein Konto und alle zugehörigen Daten (Konten, Buchungen, Regeln, Kategorien). Diese Aktion ist unwiderruflich.
+            </p>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" disabled={deleting}>
+                  <Trash2 className="mr-2 h-4 w-4" />{deleting ? "Wird gelöscht…" : "Konto endgültig löschen"}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Konto wirklich löschen?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Dein Konto ({user?.email}) und alle Daten werden dauerhaft entfernt. Dies kann nicht rückgängig gemacht werden.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                  <AlertDialogAction onClick={onDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Endgültig löschen
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </Card>
         </TabsContent>
 
         <TabsContent value="language" className="mt-4 space-y-4">
