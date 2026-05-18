@@ -308,7 +308,7 @@ function AccountDetailPage() {
                 </tr>
               </thead>
               <tbody>
-                {tList.map((t) => {
+                {filteredList.map((t) => {
                   const c = t.category_id ? catById[t.category_id] : null;
                   const isTransfer = t.kind === "transfer";
                   const sign = isTransfer ? "" : t.kind === "income" ? "+" : "−";
