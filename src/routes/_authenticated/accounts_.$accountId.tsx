@@ -4,16 +4,18 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
-import { useAccountBalances, useTransactions, useCategories, type Transaction } from "@/lib/queries";
+import { Input } from "@/components/ui/input";
+import { useAccountBalances, useTransactions, useCategories, useAccounts, type Transaction } from "@/lib/queries";
 import { fmtEUR, fmtDate, accountTypeLabel } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from "recharts";
-import { ChevronLeft, Wallet, CreditCard, Landmark, TrendingDown, Activity, Hash, Plus, Pencil, Copy, Trash2 } from "lucide-react";
+import { ChevronLeft, Wallet, CreditCard, Landmark, TrendingDown, Activity, Hash, Plus, Pencil, Copy, Trash2, Search, Download, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { TransactionDialog } from "./transactions";
+import { CsvImportDialog } from "@/components/CsvImportDialog";
 
 export const Route = createFileRoute("/_authenticated/accounts_/$accountId")({
   component: AccountDetailPage,
@@ -33,6 +35,9 @@ function AccountDetailPage() {
   );
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
+  const [search, setSearch] = useState("");
+  const [importOpen, setImportOpen] = useState(false);
+  const accountsAll = useAccounts();
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["transactions"] });
@@ -90,6 +95,19 @@ function AccountDetailPage() {
     const inbound = (allTxs.data ?? []).filter((t) => t.kind === "transfer" && t.transfer_to_account_id === accountId && t.account_id !== accountId);
     return [...rawList, ...inbound].sort((a, b) => b.occurred_on.localeCompare(a.occurred_on));
   }, [rawList, allTxs.data, accountId]);
+
+  const filteredList = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return tList;
+    return tList.filter((t) => {
+      const c = t.category_id ? catById[t.category_id] : null;
+      return (
+        (t.note ?? "").toLowerCase().includes(q) ||
+        (c?.name ?? "").toLowerCase().includes(q) ||
+        String(t.amount).includes(q)
+      );
+    });
+  }, [tList, search, catById]);
 
   // Stats derived from ALL linked transactions (reactive to data)
   const stats = useMemo(() => {
@@ -256,15 +274,38 @@ function AccountDetailPage() {
         </Card>
       )}
 
+      {/* Toolbar */}
+      <Card className="p-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative min-w-[200px] flex-1">
+            <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buchungen durchsuchen…"
+              className="pl-8"
+            />
+          </div>
+          <Button variant="outline" size="sm" onClick={() => exportCsv(filteredList, catById, accountsAll.data ?? [], account.name)}>
+            <Download className="mr-2 h-4 w-4" />Exportieren
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+            <Upload className="mr-2 h-4 w-4" />CSV Importieren
+          </Button>
+        </div>
+      </Card>
+
       {/* Transactions */}
       <Card className="p-0 overflow-hidden">
         <div className="flex items-center justify-between border-b px-4 py-3">
-          <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Verknüpfte Buchungen</div>
+          <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
+            Verknüpfte Buchungen {search && <span className="ml-1 normal-case">({filteredList.length} von {tList.length})</span>}
+          </div>
           <Button size="sm" onClick={() => { setEditingTx(null); setDialogOpen(true); }}>
             <Plus className="mr-2 h-4 w-4" />Neue Buchung
           </Button>
         </div>
-        {tList.length === 0 ? (
+        {filteredList.length === 0 ? (
           <div className="p-8 text-center text-sm text-muted-foreground">Keine Buchungen gefunden</div>
         ) : (
           <div className="overflow-x-auto">
@@ -280,7 +321,7 @@ function AccountDetailPage() {
                 </tr>
               </thead>
               <tbody>
-                {tList.map((t) => {
+                {filteredList.map((t) => {
                   const c = t.category_id ? catById[t.category_id] : null;
                   const isTransfer = t.kind === "transfer";
                   const sign = isTransfer ? "" : t.kind === "income" ? "+" : "−";
@@ -318,6 +359,13 @@ function AccountDetailPage() {
         />
       </Dialog>
 
+      <Dialog open={importOpen} onOpenChange={setImportOpen}>
+        <CsvImportDialog
+          defaultAccountId={accountId}
+          onClose={() => { setImportOpen(false); refresh(); }}
+        />
+      </Dialog>
+
       <div className="flex justify-end">
         <Button asChild variant="outline">
           <Link to="/transactions">Alle Transaktionen</Link>
@@ -338,4 +386,40 @@ function KpiCard({ icon, label, value, hint, valueClass }: { icon: React.ReactNo
       <div className="mt-1 text-xs text-muted-foreground">{hint}</div>
     </Card>
   );
+}
+
+function csvEscape(v: string) {
+  if (/[",;\n\r]/.test(v)) return `"${v.replace(/"/g, '""')}"`;
+  return v;
+}
+
+function exportCsv(
+  list: Transaction[],
+  catById: Record<string, { name: string; icon: string }>,
+  accounts: { id: string; name: string }[],
+  accountName: string,
+) {
+  const accById = Object.fromEntries(accounts.map((a) => [a.id, a.name]));
+  const header = ["Datum", "Typ", "Beschreibung", "Kategorie", "Konto", "Kredit/Darlehen", "Betrag"];
+  const rows = list.map((t) => {
+    const kind = t.kind === "income" ? "Einnahme" : t.kind === "expense" ? "Ausgabe" : "Umbuchung";
+    const cat = t.category_id ? catById[t.category_id]?.name ?? "" : "";
+    return [
+      t.occurred_on,
+      kind,
+      t.note ?? "",
+      cat,
+      accById[t.account_id] ?? "",
+      t.loan_account_id ? accById[t.loan_account_id] ?? "" : "",
+      String(t.amount).replace(".", ","),
+    ];
+  });
+  const csv = [header, ...rows].map((r) => r.map(csvEscape).join(";")).join("\n");
+  const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `buchungen-${accountName.replace(/[^a-z0-9-_]+/gi, "_")}-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
 }
