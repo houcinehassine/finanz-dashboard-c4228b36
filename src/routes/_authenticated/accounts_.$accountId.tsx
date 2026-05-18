@@ -35,6 +35,9 @@ function AccountDetailPage() {
   );
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
+  const [search, setSearch] = useState("");
+  const [importOpen, setImportOpen] = useState(false);
+  const accountsAll = useAccounts();
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["transactions"] });
