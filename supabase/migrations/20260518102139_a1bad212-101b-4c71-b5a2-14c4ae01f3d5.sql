@@ -1,0 +1,1 @@
+ALTER VIEW public.monthly_summary SET (security_invoker = on);
