@@ -359,6 +359,13 @@ function AccountDetailPage() {
         />
       </Dialog>
 
+      <Dialog open={importOpen} onOpenChange={setImportOpen}>
+        <CsvImportDialog
+          defaultAccountId={accountId}
+          onClose={() => { setImportOpen(false); refresh(); }}
+        />
+      </Dialog>
+
       <div className="flex justify-end">
         <Button asChild variant="outline">
           <Link to="/transactions">Alle Transaktionen</Link>
