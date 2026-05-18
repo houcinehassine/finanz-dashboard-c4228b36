@@ -261,15 +261,38 @@ function AccountDetailPage() {
         </Card>
       )}
 
+      {/* Toolbar */}
+      <Card className="p-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative min-w-[200px] flex-1">
+            <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buchungen durchsuchen…"
+              className="pl-8"
+            />
+          </div>
+          <Button variant="outline" size="sm" onClick={() => exportCsv(filteredList, catById, accountsAll.data ?? [], account.name)}>
+            <Download className="mr-2 h-4 w-4" />Exportieren
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+            <Upload className="mr-2 h-4 w-4" />CSV Importieren
+          </Button>
+        </div>
+      </Card>
+
       {/* Transactions */}
       <Card className="p-0 overflow-hidden">
         <div className="flex items-center justify-between border-b px-4 py-3">
-          <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Verknüpfte Buchungen</div>
+          <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
+            Verknüpfte Buchungen {search && <span className="ml-1 normal-case">({filteredList.length} von {tList.length})</span>}
+          </div>
           <Button size="sm" onClick={() => { setEditingTx(null); setDialogOpen(true); }}>
             <Plus className="mr-2 h-4 w-4" />Neue Buchung
           </Button>
         </div>
-        {tList.length === 0 ? (
+        {filteredList.length === 0 ? (
           <div className="p-8 text-center text-sm text-muted-foreground">Keine Buchungen gefunden</div>
         ) : (
           <div className="overflow-x-auto">
