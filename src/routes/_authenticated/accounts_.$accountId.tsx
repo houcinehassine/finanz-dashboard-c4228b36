@@ -387,3 +387,39 @@ function KpiCard({ icon, label, value, hint, valueClass }: { icon: React.ReactNo
     </Card>
   );
 }
+
+function csvEscape(v: string) {
+  if (/[",;\n\r]/.test(v)) return `"${v.replace(/"/g, '""')}"`;
+  return v;
+}
+
+function exportCsv(
+  list: Transaction[],
+  catById: Record<string, { name: string; icon: string }>,
+  accounts: { id: string; name: string }[],
+  accountName: string,
+) {
+  const accById = Object.fromEntries(accounts.map((a) => [a.id, a.name]));
+  const header = ["Datum", "Typ", "Beschreibung", "Kategorie", "Konto", "Kredit/Darlehen", "Betrag"];
+  const rows = list.map((t) => {
+    const kind = t.kind === "income" ? "Einnahme" : t.kind === "expense" ? "Ausgabe" : "Umbuchung";
+    const cat = t.category_id ? catById[t.category_id]?.name ?? "" : "";
+    return [
+      t.occurred_on,
+      kind,
+      t.note ?? "",
+      cat,
+      accById[t.account_id] ?? "",
+      t.loan_account_id ? accById[t.loan_account_id] ?? "" : "",
+      String(t.amount).replace(".", ","),
+    ];
+  });
+  const csv = [header, ...rows].map((r) => r.map(csvEscape).join(";")).join("\n");
+  const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `buchungen-${accountName.replace(/[^a-z0-9-_]+/gi, "_")}-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
