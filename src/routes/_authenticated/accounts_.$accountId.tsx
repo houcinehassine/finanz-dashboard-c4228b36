@@ -96,6 +96,19 @@ function AccountDetailPage() {
     return [...rawList, ...inbound].sort((a, b) => b.occurred_on.localeCompare(a.occurred_on));
   }, [rawList, allTxs.data, accountId]);
 
+  const filteredList = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return tList;
+    return tList.filter((t) => {
+      const c = t.category_id ? catById[t.category_id] : null;
+      return (
+        (t.note ?? "").toLowerCase().includes(q) ||
+        (c?.name ?? "").toLowerCase().includes(q) ||
+        String(t.amount).includes(q)
+      );
+    });
+  }, [tList, search, catById]);
+
   // Stats derived from ALL linked transactions (reactive to data)
   const stats = useMemo(() => {
     let positive = 0; // for bank: income; for loan-like: Tilgung (reduces debt)
