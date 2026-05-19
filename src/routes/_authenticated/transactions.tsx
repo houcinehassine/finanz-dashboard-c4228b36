@@ -517,7 +517,7 @@ function TransactionsPage() {
             })}
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">
+                <TableCell colSpan={8} className="py-10 text-center text-sm text-muted-foreground">
                   Noch keine {title.toLowerCase()}.
                 </TableCell>
               </TableRow>
