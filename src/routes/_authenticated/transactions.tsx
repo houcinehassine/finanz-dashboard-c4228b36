@@ -16,8 +16,9 @@ import { useAccounts, useCategories, useTransactions, type Transaction } from "@
 import { fmtEUR, fmtDate } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { Plus, Trash2, Pencil, X, Copy, CalendarRange } from "lucide-react";
+import { Plus, Trash2, Pencil, X, Copy, CalendarRange, Search, Download, Upload } from "lucide-react";
 import { toast } from "sonner";
+import { CsvImportDialog } from "@/components/CsvImportDialog";
 
 type RelRange = { amount: number; unit: "month" | "year" };
 const PRESETS: { label: string; value: RelRange }[] = [
@@ -133,10 +134,24 @@ function TransactionsPage() {
     return ids;
   }, [txs.data, view]);
 
-  const filtered = useMemo(
-    () => (txs.data ?? []).filter((t) => view === "all" || t.kind === view),
-    [txs.data, view],
-  );
+  const [search, setSearch] = useState("");
+  const [importOpen, setImportOpen] = useState(false);
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const base = (txs.data ?? []).filter((t) => view === "all" || t.kind === view);
+    if (!q) return base;
+    return base.filter((t) => {
+      const c = t.category_id ? catById[t.category_id] : null;
+      const a = accountById[t.account_id];
+      return (
+        (t.note ?? "").toLowerCase().includes(q) ||
+        (t.purpose ?? "").toLowerCase().includes(q) ||
+        (c?.name ?? "").toLowerCase().includes(q) ||
+        (a?.name ?? "").toLowerCase().includes(q) ||
+        String(t.amount).includes(q)
+      );
+    });
+  }, [txs.data, view, search, catById, accountById]);
   const totals = useMemo(() => {
     let income = 0, expense = 0, transfers = 0;
     for (const t of filtered) {
@@ -357,6 +372,34 @@ function TransactionsPage() {
         </Card>
       </div>
 
+      {/* Toolbar: Suche + Export + Import */}
+      <Card className="p-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative min-w-[200px] flex-1">
+            <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buchungen durchsuchen…"
+              className="pl-8"
+            />
+          </div>
+          <Button variant="outline" size="sm" onClick={() => exportAllCsv(filtered, catById, accountById)}>
+            <Download className="mr-2 h-4 w-4" />Exportieren
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+            <Upload className="mr-2 h-4 w-4" />CSV Importieren
+          </Button>
+        </div>
+      </Card>
+
+      <Dialog open={importOpen} onOpenChange={setImportOpen}>
+        <CsvImportDialog
+          requireAccountChoice
+          onClose={() => { setImportOpen(false); refresh(); }}
+        />
+      </Dialog>
+
       {selected.size > 0 && (
         <Card className="sticky top-2 z-20 flex flex-wrap items-center justify-between gap-3 border-primary/40 bg-primary/5 p-3">
           <div className="text-sm font-medium">{selected.size} ausgewählt</div>
@@ -387,6 +430,7 @@ function TransactionsPage() {
               </TableHead>
               <TableHead className="text-xs uppercase tracking-wider">Datum</TableHead>
               <TableHead className="text-xs uppercase tracking-wider">Beschreibung</TableHead>
+              <TableHead className="text-xs uppercase tracking-wider">Verwendungszweck</TableHead>
               <TableHead className="text-xs uppercase tracking-wider">Kategorie</TableHead>
               <TableHead className="text-xs uppercase tracking-wider">Verknüpft mit</TableHead>
               <TableHead className="text-right text-xs uppercase tracking-wider">Betrag</TableHead>
@@ -421,6 +465,7 @@ function TransactionsPage() {
                       )}
                     </div>
                   </TableCell>
+                  <TableCell className="max-w-[180px] truncate text-xs text-muted-foreground" title={t.purpose ?? ""}>{t.purpose ?? "—"}</TableCell>
                   <TableCell>
                     {isTransfer ? (
                       <span className="text-xs text-muted-foreground">—</span>
@@ -472,7 +517,7 @@ function TransactionsPage() {
             })}
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">
+                <TableCell colSpan={8} className="py-10 text-center text-sm text-muted-foreground">
                   Noch keine {title.toLowerCase()}.
                 </TableCell>
               </TableRow>
@@ -792,4 +837,40 @@ export function TransactionDialog({ tx, defaultKind, defaultAccountId, defaultLo
       </form>
     </DialogContent>
   );
+}
+
+function csvEscape(v: string) {
+  if (/[",;\n\r]/.test(v)) return `"${v.replace(/"/g, '""')}"`;
+  return v;
+}
+
+function exportAllCsv(
+  list: Transaction[],
+  catById: Record<string, { name: string; icon: string }>,
+  accountById: Record<string, { name: string }>,
+) {
+  const header = ["Datum", "Typ", "Beschreibung", "Verwendungszweck", "Kategorie", "Konto", "Kredit/Darlehen", "Ziel-Konto", "Betrag"];
+  const rows = list.map((t) => {
+    const kind = t.kind === "income" ? "Einnahme" : t.kind === "expense" ? "Ausgabe" : "Umbuchung";
+    const cat = t.category_id ? catById[t.category_id]?.name ?? "" : "";
+    return [
+      t.occurred_on,
+      kind,
+      t.note ?? "",
+      t.purpose ?? "",
+      cat,
+      accountById[t.account_id]?.name ?? "",
+      t.loan_account_id ? accountById[t.loan_account_id]?.name ?? "" : "",
+      t.transfer_to_account_id ? accountById[t.transfer_to_account_id]?.name ?? "" : "",
+      String(t.amount).replace(".", ","),
+    ];
+  });
+  const csv = [header, ...rows].map((r) => r.map(csvEscape).join(";")).join("\n");
+  const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `transaktionen-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
 }
