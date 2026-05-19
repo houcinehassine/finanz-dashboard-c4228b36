@@ -1,71 +1,115 @@
-# Transfers / Umschuldungen abbilden
+## Ziel
+Mehrere zusammenhängende Verbesserungen über die ganze App. Ich teile das in 6 Blöcke auf, die ich nacheinander umsetze. Du kannst alles bestätigen oder Blöcke streichen/priorisieren.
 
-## Ist-Zustand
+---
 
-- `transactions.kind` kennt nur `income` und `expense`.
-- `account_balances` und `monthly_summary` summieren strikt nach `kind`.
-- `is_liquid` schließt Clearing-Konten zwar aus dem Cashflow aus, löst aber das Umschuldungsproblem nicht: Kredit → Giro → Kreditkarte führt über das **liquide** Girokonto und würde dort fälschlich als Einkommen + Ausgabe gezählt.
+### Block 1 — Datenbank-Erweiterungen (Migration)
 
-Ergebnis: Eine Umschuldung verzerrt aktuell sowohl Cashflow/Gewinn als auch — bei zwischengeschaltetem Girokonto — den Tagessaldo.
+Nötig für mehrere folgende Features:
 
-## Lösung: echter Transfer-Typ
+- Neue Spalte `purpose TEXT` auf `transactions` (Verwendungszweck, optional).
+- Neue Tabelle `import_rules` mit RLS (`auth.uid() = user_id`):
+  - `name`, `active`, `priority` (Reihenfolge)
+  - `condition_field` (`note` | `purpose` | `amount` | `kind`)
+  - `condition_op` (`contains` | `equals` | `gt` | `lt` | `eq`)
+  - `condition_value` (TEXT, intern geparst)
+  - `action_category_id` (uuid, nullable)
+  - `action_kind` (`income` | `expense` | `transfer`, nullable)
+  - `action_loan_account_id` (uuid, nullable)
 
-### 1. Schema
+---
 
-- Enum `transaction_kind` um Wert `transfer` erweitern.
-- Neue Spalte `transactions.transfer_to_account_id uuid` (Zielkonto bei Transfers, sonst NULL).
-- Check-Trigger: bei `kind='transfer'` muss `transfer_to_account_id` gesetzt sein und ungleich `account_id`; bei den anderen Typen muss es NULL sein. Kategorie ist optional.
-- View `account_balances` anpassen: Transfers reduzieren `account_id` (Quelle) um `amount` und erhöhen `transfer_to_account_id` (Ziel) um `amount`.
-- View `monthly_summary` anpassen: `kind='transfer'` komplett ausschließen (kein Einkommen, keine Ausgabe, kein Net).
+### Block 2 — Spalte „Verwendungszweck" & neue Verknüpfungs-Spalte
 
-### 2. Eine Buchung statt zwei
+- `purpose` in Transaktions-Dialog (manuell anlegen/bearbeiten) und CSV-Import-Mapping.
+- Neue Tabellen-Spalte „Verwendungszweck" in:
+  - Konto-Detailseite Buchungsliste
+  - Seite „Alle Transaktionen"
+- Neue Spalte „Verknüpfung" in der Buchungstabelle der Konto-Detailseite:
+  - Umbuchung: „Aus: X / Ein: Y"
+  - Einnahme/Ausgabe ohne Kredit: nur Konto
+  - Mit Kredit/Darlehen: „Konto: X / Kredit (bzw. Darlehen): Y"
+  - Alle Kontonamen sind Links zur jeweiligen Konto-Detailseite.
 
-Eine Umschuldung wird als **eine** Transfer-Zeile gespeichert (Quelle → Ziel, ein Betrag, ein Datum). Damit ist Wiederherstellen/Bearbeiten/Löschen atomar und es entstehen keine "Geister"-Einkommen mehr.
+---
 
-Drei-Stationen-Fall (Kredit → Giro → Karte) wird als **zwei aufeinanderfolgende Transfers** abgebildet:
-1. Transfer Kredit → Giro
-2. Transfer Giro → Karte
+### Block 3 — „Alle Transaktionen" + Toolbar überall
 
-Beide sind cashflow-neutral, das Girokonto-Saldo bleibt am Ende identisch, Kreditkarte wird getilgt, neuer Kredit baut Schuld auf. Net Worth bleibt im Moment der Umschuldung unverändert.
+- „Alle Transaktionen" zeigt wirklich alle Buchungen (kein Konto-Filter standardmäßig; bestehende Filter bleiben optional).
+- Toolbar (Suche + CSV-Export + CSV-Import) auch auf „Alle Transaktionen", oberhalb der Liste.
+- Auf der Konto-Seite Toolbar wie schon vorhanden lassen.
+- CSV-Import-Dialog erweitern (siehe Block 4).
 
-### 3. UI in `transactions.tsx`
+---
 
-- Im Transaktions-Dialog dritter Typ-Tab **„Umbuchung"** neben Einnahme/Ausgabe.
-- Bei Auswahl Transfer:
-  - Felder: Von-Konto, Auf-Konto, Betrag, Datum, Notiz.
-  - Kategorie und „Verknüpftes Konto" ausgeblendet.
-  - Beide Konten müssen unterschiedlich sein.
-- Tabelle: Transfer-Zeilen mit Pfeil-Badge `Quelle → Ziel`, Betrag neutral (kein +/−, keine rot/grün-Farbe).
-- Filter „Einnahmen / Ausgaben / Alle" um „Umbuchungen" ergänzen.
+### Block 4 — CSV-Import: Konto-/Kreditauswahl, Auto-Kategorien, globale Sichtbarkeit
 
-### 4. Dashboard (`dashboard.tsx`)
+- Schritt „Spalten zuordnen": Felder **Konto** und **Kredit/Darlehen** kommen NICHT aus CSV-Spalten, sondern aus Dropdowns mit den bestehenden Konten des Nutzers.
+  - Auf Konto-Detailseite: Konto vorausgewählt = aktuelles Konto (änderbar).
+  - Auf „Alle Transaktionen": Pflicht-Auswahl eines Zielkontos.
+- Unbekannte Kategorie im CSV → automatisch neu anlegen (kind heuristisch oder `expense` als Default).
+- Importierte Buchungen erscheinen automatisch in „Alle Transaktionen" (technisch schon der Fall, weil dort ohne Filter gelesen wird — wird durch Block 3 garantiert).
+- Vor dem Insert: aktive Regeln aus Block 6 anwenden.
 
-- Cashflow-, Einkommen-, Ausgaben- und Kategorie-Charts: Transfers herausfiltern (`t.kind !== 'transfer'`).
-- Konto-Salden / Net Worth: kommen aus `account_balances` und stimmen automatisch, da das View Transfers berücksichtigt.
-- Restschuld-Berechnung der Kreditkonten: Transfer auf ein Loan-Konto verringert dessen Restschuld (Tilgung), Transfer von einem Loan-Konto erhöht sie (Kreditaufnahme).
+---
 
-### 5. Recurring & Bulk Edit
+### Block 5 — Mehrfachauswahl auf Konto-Detailseite
 
-- `recurring_rules` bleibt unverändert (kein Bedarf für wiederkehrende Transfers jetzt).
-- Bulk-Edit-Dialog: Transfer-Zeilen werden ausgeschlossen oder die Felder Konto/Verknüpftes Konto/Kategorie/Zinsen/Anyfin sind dort no-op.
+- Checkbox pro Zeile + „Alle auswählen"-Header-Checkbox.
+- Action-Bar erscheint bei ≥ 1 Auswahl: „Löschen" + „Bearbeiten".
+- Bulk-Bearbeiten: Dialog erlaubt Setzen von Kategorie / Typ / Konto / Kredit-Verknüpfung (nur ausgewählte Felder werden überschrieben).
+- Bulk-Löschen: Bestätigungsdialog, dann Supabase `.in('id', [...])`.
 
-## Technische Details
+---
 
-```sql
-ALTER TYPE transaction_kind ADD VALUE 'transfer';
-ALTER TABLE transactions ADD COLUMN transfer_to_account_id uuid;
+### Block 6 — Regel-System in Einstellungen
 
--- Validierungs-Trigger statt CHECK (auth-/zeitneutral, aber konsistent)
-CREATE FUNCTION validate_transaction() RETURNS trigger ...
-  IF NEW.kind = 'transfer' AND (NEW.transfer_to_account_id IS NULL
-       OR NEW.transfer_to_account_id = NEW.account_id) THEN RAISE ...
-  IF NEW.kind <> 'transfer' AND NEW.transfer_to_account_id IS NOT NULL THEN RAISE ...
+- Neuer Tab/Bereich „Regeln" in `settings.tsx`.
+- CRUD-UI: Liste, Hinzufügen, Bearbeiten, Löschen, Aktivieren/Deaktivieren, Reihenfolge per Priority.
+- Regel-Engine (`src/lib/rules.ts`):
+  - `applyRules(tx, rules, categories)` gibt mutiertes Transaktions-Objekt zurück.
+  - Erste passende Regel pro Aktion gewinnt; mehrere Regeln (Kategorie + Typ) kombinierbar.
+- Eingebunden im CSV-Import vor dem Bulk-Insert.
+- Button „Regeln auf bestehende Buchungen anwenden" — läuft client-seitig in Batches mit Fortschrittsanzeige.
 
--- account_balances: zusätzliche UNION-Zweige für Transfers
---   Quelle: -amount, Ziel: +amount
--- monthly_summary: WHERE kind IN ('income','expense')
-```
+---
 
-## Frage vor Umsetzung
+### Block 7 — Dynamische Graph-Aggregation
 
-Reicht dir **eine Transfer-Zeile** pro Umbuchung (mein Vorschlag), oder möchtest du lieber **zwei verknüpfte Buchungen** (eine Ausgabe + eine Einnahme mit gemeinsamer `transfer_group_id`)? Variante 1 ist sauberer und ich würde sie empfehlen.
+- Neuer Helper `src/lib/aggregate.ts`:
+  - Input: Datenpunkte mit Datum + Zeitraum (`from`, `to`).
+  - Wählt Bucket-Granularität automatisch nach Spannweite:
+    - ≤ 7 Tage → täglich
+    - ≤ 31 Tage → ~5-Tage / wöchentlich
+    - ≤ 93 Tage → wöchentlich
+    - ≤ 186 Tage → 2-wöchentlich
+    - ≤ 366 Tage → monatlich
+    - ≤ 3 J → quartalsweise
+    - ≤ 5 J → halbjährlich
+    - sonst → jährlich
+  - Aggregiert Einnahmen/Ausgaben/Saldo entsprechend.
+- Wird in Konto-Saldo-Verlauf-Graph und Dashboard-Charts genutzt; X-Achsen-Labels werden vom Bucket-Format geliefert.
+
+---
+
+## Technische Notizen
+
+- Migration zuerst (separater Tool-Call, du musst sie freigeben). Danach Code.
+- Alle neuen Queries / Mutationen über bestehenden `supabase`-Browser-Client (RLS sorgt für Sicherheit).
+- Bulk-Edit & Regel-Anwendung verwenden `supabase.from('transactions').update(...).in('id', [...])`.
+- Neue Tabelle `import_rules` bekommt RLS-Policy `auth.uid() = user_id` analog zu `recurring_rules`.
+
+## Vorschlag zur Reihenfolge
+
+1. Block 1 (Migration) — Freigabe nötig.
+2. Block 2 + 3 (Spalten, „Alle Transaktionen", Toolbar) in einem Rutsch.
+3. Block 4 (Import-Erweiterungen).
+4. Block 5 (Mehrfachauswahl).
+5. Block 6 (Regel-System).
+6. Block 7 (Graph-Aggregation).
+
+## Fragen vor Start
+
+1. **Standard-Typ für Auto-Kategorien beim Import**: immer `expense`, oder anhand des Betrags (negativ → expense, sonst → income)?
+2. **Regel-Reihenfolge**: erste passende Regel gewinnt pro Aktionsfeld (Empfehlung), oder alle anwenden und letzte gewinnt?
+3. Soll ich wirklich alles auf einmal liefern, oder lieber in 2 Schritten (z.B. Blöcke 1–4 jetzt, 5–7 danach)? Letzteres macht Review/Test deutlich einfacher.

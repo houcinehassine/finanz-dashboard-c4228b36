@@ -104,6 +104,54 @@ export type Database = {
         }
         Relationships: []
       }
+      import_rules: {
+        Row: {
+          action_category_id: string | null
+          action_kind: string | null
+          action_loan_account_id: string | null
+          active: boolean
+          condition_field: string
+          condition_op: string
+          condition_value: string
+          created_at: string
+          id: string
+          name: string
+          priority: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          action_category_id?: string | null
+          action_kind?: string | null
+          action_loan_account_id?: string | null
+          active?: boolean
+          condition_field: string
+          condition_op: string
+          condition_value: string
+          created_at?: string
+          id?: string
+          name: string
+          priority?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          action_category_id?: string | null
+          action_kind?: string | null
+          action_loan_account_id?: string | null
+          active?: boolean
+          condition_field?: string
+          condition_op?: string
+          condition_value?: string
+          created_at?: string
+          id?: string
+          name?: string
+          priority?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -213,6 +261,7 @@ export type Database = {
           loan_account_id: string | null
           note: string | null
           occurred_on: string
+          purpose: string | null
           transfer_to_account_id: string | null
           user_id: string
         }
@@ -228,6 +277,7 @@ export type Database = {
           loan_account_id?: string | null
           note?: string | null
           occurred_on?: string
+          purpose?: string | null
           transfer_to_account_id?: string | null
           user_id: string
         }
@@ -243,6 +293,7 @@ export type Database = {
           loan_account_id?: string | null
           note?: string | null
           occurred_on?: string
+          purpose?: string | null
           transfer_to_account_id?: string | null
           user_id?: string
         }
