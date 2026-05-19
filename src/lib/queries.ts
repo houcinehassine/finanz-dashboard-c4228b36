@@ -39,6 +39,7 @@ export type Transaction = {
   amount: number;
   occurred_on: string;
   note: string | null;
+  purpose: string | null;
   created_at: string;
   interest_amount: number | null;
   is_anyfin: boolean;
