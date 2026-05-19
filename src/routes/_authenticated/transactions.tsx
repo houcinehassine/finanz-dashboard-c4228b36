@@ -372,6 +372,34 @@ function TransactionsPage() {
         </Card>
       </div>
 
+      {/* Toolbar: Suche + Export + Import */}
+      <Card className="p-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative min-w-[200px] flex-1">
+            <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buchungen durchsuchen…"
+              className="pl-8"
+            />
+          </div>
+          <Button variant="outline" size="sm" onClick={() => exportAllCsv(filtered, catById, accountById)}>
+            <Download className="mr-2 h-4 w-4" />Exportieren
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+            <Upload className="mr-2 h-4 w-4" />CSV Importieren
+          </Button>
+        </div>
+      </Card>
+
+      <Dialog open={importOpen} onOpenChange={setImportOpen}>
+        <CsvImportDialog
+          requireAccountChoice
+          onClose={() => { setImportOpen(false); refresh(); }}
+        />
+      </Dialog>
+
       {selected.size > 0 && (
         <Card className="sticky top-2 z-20 flex flex-wrap items-center justify-between gap-3 border-primary/40 bg-primary/5 p-3">
           <div className="text-sm font-medium">{selected.size} ausgewählt</div>
