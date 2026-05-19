@@ -134,10 +134,24 @@ function TransactionsPage() {
     return ids;
   }, [txs.data, view]);
 
-  const filtered = useMemo(
-    () => (txs.data ?? []).filter((t) => view === "all" || t.kind === view),
-    [txs.data, view],
-  );
+  const [search, setSearch] = useState("");
+  const [importOpen, setImportOpen] = useState(false);
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const base = (txs.data ?? []).filter((t) => view === "all" || t.kind === view);
+    if (!q) return base;
+    return base.filter((t) => {
+      const c = t.category_id ? catById[t.category_id] : null;
+      const a = accountById[t.account_id];
+      return (
+        (t.note ?? "").toLowerCase().includes(q) ||
+        (t.purpose ?? "").toLowerCase().includes(q) ||
+        (c?.name ?? "").toLowerCase().includes(q) ||
+        (a?.name ?? "").toLowerCase().includes(q) ||
+        String(t.amount).includes(q)
+      );
+    });
+  }, [txs.data, view, search, catById, accountById]);
   const totals = useMemo(() => {
     let income = 0, expense = 0, transfers = 0;
     for (const t of filtered) {
