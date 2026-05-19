@@ -2,25 +2,28 @@ import { useMemo, useRef, useState } from "react";
 import { DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { Upload, ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAccounts, useCategories, type Account, type Category } from "@/lib/queries";
+import { useImportRules, applyRules } from "@/lib/rules";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
 
-type FieldKey = "kind" | "note" | "amount" | "occurred_on" | "category" | "account" | "loan_account";
+// Only fields actually mapped from CSV columns. Account & loan are picked separately.
+type FieldKey = "kind" | "note" | "purpose" | "amount" | "occurred_on" | "category";
 
 const FIELDS: { key: FieldKey; label: string; required?: boolean }[] = [
   { key: "occurred_on", label: "Datum", required: true },
-  { key: "note", label: "Beschreibung" },
   { key: "amount", label: "Betrag", required: true },
+  { key: "note", label: "Beschreibung" },
+  { key: "purpose", label: "Verwendungszweck" },
   { key: "kind", label: "Typ (Einnahme/Ausgabe)" },
   { key: "category", label: "Kategorie" },
-  { key: "account", label: "Konto" },
-  { key: "loan_account", label: "Kredit/Darlehen" },
 ];
 
 const SKIP = "__skip__";
+const NONE = "__none__";
 
 function parseCsv(text: string): string[][] {
   const rows: string[][] = [];
@@ -48,9 +51,7 @@ function parseCsv(text: string): string[][] {
 function parseDate(s: string): string | null {
   const t = s.trim();
   if (!t) return null;
-  // ISO YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}/.test(t)) return t.slice(0, 10);
-  // DE DD.MM.YYYY
   const de = t.match(/^(\d{1,2})[.\/](\d{1,2})[.\/](\d{2,4})/);
   if (de) {
     let [, d, m, y] = de;
@@ -65,7 +66,6 @@ function parseDate(s: string): string | null {
 function parseAmount(s: string): number | null {
   if (!s) return null;
   let t = s.replace(/[€$\s]/g, "").trim();
-  // remove thousands sep, normalize decimal
   if (/,\d{1,2}$/.test(t)) t = t.replace(/\./g, "").replace(",", ".");
   else t = t.replace(/,/g, "");
   const n = Number(t);
@@ -75,28 +75,33 @@ function parseAmount(s: string): number | null {
 function inferKind(s: string): "income" | "expense" | "transfer" | null {
   const t = s.toLowerCase().trim();
   if (!t) return null;
-  if (["einnahme", "income", "+", "credit", "gutschrift", "haben"].some((k) => t.includes(k))) return "income";
-  if (["ausgabe", "expense", "-", "debit", "lastschrift", "soll"].some((k) => t.includes(k))) return "expense";
+  if (["einnahme", "income", "credit", "gutschrift", "haben"].some((k) => t.includes(k))) return "income";
+  if (["ausgabe", "expense", "debit", "lastschrift", "soll"].some((k) => t.includes(k))) return "expense";
   if (["transfer", "umbuchung"].some((k) => t.includes(k))) return "transfer";
   return null;
 }
 
 export function CsvImportDialog({
   defaultAccountId,
+  requireAccountChoice = false,
   onClose,
 }: {
-  defaultAccountId: string;
+  defaultAccountId?: string;
+  requireAccountChoice?: boolean;
   onClose: () => void;
 }) {
   const { user } = useAuth();
   const accounts = useAccounts();
   const cats = useCategories();
+  const rules = useImportRules();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [rows, setRows] = useState<string[][]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const [mapping, setMapping] = useState<Record<FieldKey, number | null>>({
-    occurred_on: null, note: null, amount: null, kind: null, category: null, account: null, loan_account: null,
+    occurred_on: null, note: null, purpose: null, amount: null, kind: null, category: null,
   });
+  const [targetAccountId, setTargetAccountId] = useState<string>(defaultAccountId ?? "");
+  const [targetLoanId, setTargetLoanId] = useState<string>(NONE);
   const [importing, setImporting] = useState(false);
   const [imported, setImported] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -104,6 +109,8 @@ export function CsvImportDialog({
 
   const accountsList: Account[] = accounts.data ?? [];
   const categoriesList: Category[] = cats.data ?? [];
+  const bankAccounts = accountsList.filter((a) => !a.archived && (a.type === "checking" || a.type === "savings" || a.type === "clearing" || a.type === "credit_card"));
+  const loanAccounts = accountsList.filter((a) => !a.archived && (a.type === "loan" || a.type === "darlehen"));
 
   const handleFile = async (file: File) => {
     const text = await file.text();
@@ -112,17 +119,15 @@ export function CsvImportDialog({
     const head = parsed[0];
     setHeaders(head);
     setRows(parsed.slice(1));
-    // auto-map by header name
     const auto: Record<FieldKey, number | null> = { ...mapping };
     head.forEach((h, i) => {
       const l = h.toLowerCase().trim();
-      if (auto.occurred_on === null && /(datum|date)/.test(l)) auto.occurred_on = i;
-      else if (auto.note === null && /(beschreibung|note|notiz|description|verwendung|buchungstext|name)/.test(l)) auto.note = i;
+      if (auto.occurred_on === null && /(datum|date|buchungstag|valuta)/.test(l)) auto.occurred_on = i;
       else if (auto.amount === null && /(betrag|amount|summe|wert)/.test(l)) auto.amount = i;
+      else if (auto.purpose === null && /(verwendungszweck|purpose|zweck)/.test(l)) auto.purpose = i;
+      else if (auto.note === null && /(beschreibung|note|notiz|description|buchungstext|name|empfänger|auftraggeber)/.test(l)) auto.note = i;
       else if (auto.kind === null && /(typ|kind|art)/.test(l)) auto.kind = i;
       else if (auto.category === null && /(kategorie|category)/.test(l)) auto.category = i;
-      else if (auto.account === null && /(konto|account)/.test(l)) auto.account = i;
-      else if (auto.loan_account === null && /(kredit|darlehen|loan)/.test(l)) auto.loan_account = i;
     });
     setMapping(auto);
     setStep(2);
@@ -135,42 +140,105 @@ export function CsvImportDialog({
   };
 
   const preview = useMemo(() => rows.slice(0, 5), [rows]);
-
-  const canImport = mapping.occurred_on !== null && mapping.amount !== null;
+  const canImport = mapping.occurred_on !== null && mapping.amount !== null && !!targetAccountId;
 
   const doImport = async () => {
     if (!user || !canImport) return;
     setImporting(true);
-    const catByName = new Map(categoriesList.map((c) => [c.name.toLowerCase(), c]));
-    const accByName = new Map(accountsList.map((a) => [a.name.toLowerCase(), a]));
-    const toInsert: any[] = [];
+
+    // 1. Build a mutable category lookup (lower-case name -> category).
+    const catByName = new Map<string, Category>(categoriesList.map((c) => [c.name.toLowerCase(), c]));
+
+    // 2. Collect needed-but-missing category names (kind decided per-row later).
+    const needed = new Map<string, { name: string; kind: "income" | "expense" }>();
+    const parsedRows: Array<{
+      occurred_on: string;
+      amount: number;
+      kind: "income" | "expense" | "transfer";
+      note: string | null;
+      purpose: string | null;
+      catName: string | null;
+    }> = [];
     const errors: string[] = [];
+
     rows.forEach((r, idx) => {
       const get = (k: FieldKey) => (mapping[k] !== null ? (r[mapping[k]!] ?? "").trim() : "");
       const date = parseDate(get("occurred_on"));
       const rawAmt = parseAmount(get("amount"));
       if (!date || rawAmt === null) { errors.push(`Zeile ${idx + 2}: Datum/Betrag ungültig`); return; }
-      let kind: "income" | "expense" | "transfer" = inferKind(get("kind")) || (rawAmt < 0 ? "expense" : "income");
+      const kind = inferKind(get("kind")) || (rawAmt < 0 ? "expense" : "income");
       const amount = Math.abs(rawAmt);
-      const catName = get("category").toLowerCase();
-      const cat = catName ? catByName.get(catName) : null;
-      const accName = get("account").toLowerCase();
-      const acc = accName ? accByName.get(accName) : null;
-      const loanName = get("loan_account").toLowerCase();
-      const loan = loanName ? accByName.get(loanName) : null;
-      toInsert.push({
-        user_id: user.id,
-        account_id: acc?.id ?? defaultAccountId,
-        category_id: cat?.id ?? null,
-        loan_account_id: loan?.id ?? null,
-        kind,
-        amount,
+      const catName = get("category").trim();
+      if (catName && !catByName.has(catName.toLowerCase())) {
+        const key = catName.toLowerCase();
+        const decidedKind: "income" | "expense" = kind === "transfer" ? "expense" : kind;
+        if (!needed.has(key)) needed.set(key, { name: catName, kind: decidedKind });
+      }
+      parsedRows.push({
         occurred_on: date,
+        amount,
+        kind,
         note: get("note") || null,
-        is_anyfin: false,
-        transfer_to_account_id: null,
+        purpose: get("purpose") || null,
+        catName: catName || null,
       });
     });
+
+    // 3. Create missing categories in bulk.
+    if (needed.size > 0) {
+      const toCreate = Array.from(needed.values()).map((c) => ({
+        user_id: user.id,
+        name: c.name,
+        kind: c.kind,
+        color: "#64748b",
+        icon: "🏷️",
+        is_system: false,
+      }));
+      const { data: created, error: catErr } = await supabase
+        .from("categories")
+        .insert(toCreate)
+        .select("id,name,kind,color,icon,archived,is_system");
+      if (catErr) {
+        toast.error("Kategorien konnten nicht angelegt werden: " + catErr.message);
+        setImporting(false);
+        return;
+      }
+      for (const c of (created ?? []) as Category[]) {
+        catByName.set(c.name.toLowerCase(), c);
+      }
+    }
+
+    // 4. Build transaction inserts + apply rules.
+    const rulesList = rules.data ?? [];
+    const baseLoanId = targetLoanId !== NONE ? targetLoanId : null;
+    const toInsert = parsedRows.map((p) => {
+      const cat = p.catName ? catByName.get(p.catName.toLowerCase()) ?? null : null;
+      const row: any = {
+        user_id: user.id,
+        account_id: targetAccountId,
+        category_id: cat?.id ?? null,
+        loan_account_id: baseLoanId,
+        kind: p.kind,
+        amount: p.amount,
+        occurred_on: p.occurred_on,
+        note: p.note,
+        purpose: p.purpose,
+        is_anyfin: false,
+        transfer_to_account_id: null,
+      };
+      // Rules engine (operates on note/purpose/amount/kind, may set category/kind/loan)
+      const after = applyRules(
+        { note: row.note, purpose: row.purpose, amount: row.amount, kind: row.kind, category_id: row.category_id, loan_account_id: row.loan_account_id },
+        rulesList,
+      );
+      row.category_id = after.category_id;
+      row.kind = after.kind ?? row.kind;
+      row.loan_account_id = after.loan_account_id ?? null;
+      // Transfer rows would need transfer_to_account_id; we never set it via CSV.
+      if (row.kind === "transfer") row.kind = "expense";
+      return row;
+    });
+
     if (toInsert.length === 0) {
       toast.error("Keine gültigen Zeilen");
       setImporting(false);
@@ -190,7 +258,7 @@ export function CsvImportDialog({
         <DialogTitle>CSV importieren — Schritt {step} von 3</DialogTitle>
         <DialogDescription>
           {step === 1 && "Wähle eine CSV-Datei aus"}
-          {step === 2 && "Ordne die Spalten den Feldern zu"}
+          {step === 2 && "Ordne die Spalten den Feldern zu und wähle das Zielkonto"}
           {step === 3 && "Import abgeschlossen"}
         </DialogDescription>
       </DialogHeader>
@@ -217,28 +285,65 @@ export function CsvImportDialog({
       )}
 
       {step === 2 && (
-        <div className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2">
-            {FIELDS.map((f) => (
-              <div key={f.key} className="space-y-1">
-                <label className="text-xs font-medium">
-                  {f.label}{f.required && <span className="text-red-500"> *</span>}
-                </label>
-                <Select
-                  value={mapping[f.key] === null ? SKIP : String(mapping[f.key])}
-                  onValueChange={(v) => setMapping((m) => ({ ...m, [f.key]: v === SKIP ? null : Number(v) }))}
-                >
-                  <SelectTrigger><SelectValue placeholder="Spalte wählen" /></SelectTrigger>
+        <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+          <div className="rounded-md border bg-muted/30 p-3 space-y-3">
+            <div className="text-xs uppercase tracking-wider text-muted-foreground">Zielkonto</div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label className="text-xs">
+                  Konto <span className="text-red-500">*</span>
+                  {requireAccountChoice && <span className="ml-1 text-muted-foreground">(Pflicht)</span>}
+                </Label>
+                <Select value={targetAccountId} onValueChange={setTargetAccountId}>
+                  <SelectTrigger><SelectValue placeholder="Konto wählen" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={SKIP}>— überspringen —</SelectItem>
-                    {headers.map((h, i) => (
-                      <SelectItem key={i} value={String(i)}>{h || `Spalte ${i + 1}`}</SelectItem>
+                    {bankAccounts.map((a) => (
+                      <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-            ))}
+              <div className="space-y-1">
+                <Label className="text-xs">Verknüpfter Kredit / Darlehen (optional)</Label>
+                <Select value={targetLoanId} onValueChange={setTargetLoanId}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE}>— Keiner —</SelectItem>
+                    {loanAccounts.map((a) => (
+                      <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">Alle importierten Buchungen werden diesem Konto zugeordnet und erscheinen auch in „Alle Transaktionen".</p>
           </div>
+
+          <div>
+            <div className="mb-2 text-xs uppercase tracking-wider text-muted-foreground">Spalten zuordnen</div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {FIELDS.map((f) => (
+                <div key={f.key} className="space-y-1">
+                  <label className="text-xs font-medium">
+                    {f.label}{f.required && <span className="text-red-500"> *</span>}
+                  </label>
+                  <Select
+                    value={mapping[f.key] === null ? SKIP : String(mapping[f.key])}
+                    onValueChange={(v) => setMapping((m) => ({ ...m, [f.key]: v === SKIP ? null : Number(v) }))}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Spalte wählen" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={SKIP}>— überspringen —</SelectItem>
+                      {headers.map((h, i) => (
+                        <SelectItem key={i} value={String(i)}>{h || `Spalte ${i + 1}`}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div>
             <div className="mb-2 text-xs uppercase tracking-wider text-muted-foreground">Vorschau ({rows.length} Zeilen)</div>
             <div className="overflow-x-auto rounded border">
@@ -256,6 +361,12 @@ export function CsvImportDialog({
               </table>
             </div>
           </div>
+
+          {(rules.data?.length ?? 0) > 0 && (
+            <p className="text-xs text-muted-foreground">
+              ℹ️ {rules.data!.filter((r) => r.active).length} aktive Regel(n) werden vor dem Speichern automatisch angewendet.
+            </p>
+          )}
         </div>
       )}
 
@@ -263,7 +374,7 @@ export function CsvImportDialog({
         <div className="flex flex-col items-center py-6 text-center">
           <CheckCircle2 className="h-12 w-12 text-emerald-500" />
           <div className="mt-3 text-lg font-semibold">{imported} Buchungen importiert</div>
-          <div className="text-sm text-muted-foreground">Die neuen Buchungen sind diesem Konto zugeordnet.</div>
+          <div className="text-sm text-muted-foreground">Die neuen Buchungen sind diesem Konto zugeordnet und in „Alle Transaktionen" sichtbar.</div>
         </div>
       )}
 
