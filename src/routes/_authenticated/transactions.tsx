@@ -16,8 +16,9 @@ import { useAccounts, useCategories, useTransactions, type Transaction } from "@
 import { fmtEUR, fmtDate } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { Plus, Trash2, Pencil, X, Copy, CalendarRange } from "lucide-react";
+import { Plus, Trash2, Pencil, X, Copy, CalendarRange, Search, Download, Upload } from "lucide-react";
 import { toast } from "sonner";
+import { CsvImportDialog } from "@/components/CsvImportDialog";
 
 type RelRange = { amount: number; unit: "month" | "year" };
 const PRESETS: { label: string; value: RelRange }[] = [
