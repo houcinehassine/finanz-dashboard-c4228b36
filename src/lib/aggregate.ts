@@ -81,18 +81,20 @@ export function bucketOf(dateISO: string, bucket: Bucket): { key: string; label:
 }
 
 // Generic group: for each input row pick the bucket and sum numeric fields.
+export type GroupRow = { key: string; label: string; [k: string]: string | number };
+
 export function groupByBucket<T extends { occurred_on: string }>(
   rows: T[],
   bucket: Bucket,
   pick: (t: T) => Record<string, number>,
-): Array<{ key: string; label: string } & Record<string, number>> {
-  const map = new Map<string, { key: string; label: string } & Record<string, number>>();
+): GroupRow[] {
+  const map = new Map<string, GroupRow>();
   for (const r of rows) {
     const b = bucketOf(r.occurred_on, bucket);
-    const cur = map.get(b.key) ?? { key: b.key, label: b.label };
+    const cur: GroupRow = map.get(b.key) ?? { key: b.key, label: b.label };
     const inc = pick(r);
     for (const k of Object.keys(inc)) {
-      cur[k] = (cur[k] ?? 0) + inc[k];
+      cur[k] = ((cur[k] as number) ?? 0) + inc[k];
     }
     map.set(b.key, cur);
   }
