@@ -465,6 +465,7 @@ function TransactionsPage() {
                       )}
                     </div>
                   </TableCell>
+                  <TableCell className="max-w-[180px] truncate text-xs text-muted-foreground" title={t.purpose ?? ""}>{t.purpose ?? "—"}</TableCell>
                   <TableCell>
                     {isTransfer ? (
                       <span className="text-xs text-muted-foreground">—</span>
