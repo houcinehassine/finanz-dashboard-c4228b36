@@ -430,6 +430,7 @@ function TransactionsPage() {
               </TableHead>
               <TableHead className="text-xs uppercase tracking-wider">Datum</TableHead>
               <TableHead className="text-xs uppercase tracking-wider">Beschreibung</TableHead>
+              <TableHead className="text-xs uppercase tracking-wider">Verwendungszweck</TableHead>
               <TableHead className="text-xs uppercase tracking-wider">Kategorie</TableHead>
               <TableHead className="text-xs uppercase tracking-wider">Verknüpft mit</TableHead>
               <TableHead className="text-right text-xs uppercase tracking-wider">Betrag</TableHead>
