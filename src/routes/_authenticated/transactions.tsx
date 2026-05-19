@@ -838,3 +838,39 @@ export function TransactionDialog({ tx, defaultKind, defaultAccountId, defaultLo
     </DialogContent>
   );
 }
+
+function csvEscape(v: string) {
+  if (/[",;\n\r]/.test(v)) return `"${v.replace(/"/g, '""')}"`;
+  return v;
+}
+
+function exportAllCsv(
+  list: Transaction[],
+  catById: Record<string, { name: string; icon: string }>,
+  accountById: Record<string, { name: string }>,
+) {
+  const header = ["Datum", "Typ", "Beschreibung", "Verwendungszweck", "Kategorie", "Konto", "Kredit/Darlehen", "Ziel-Konto", "Betrag"];
+  const rows = list.map((t) => {
+    const kind = t.kind === "income" ? "Einnahme" : t.kind === "expense" ? "Ausgabe" : "Umbuchung";
+    const cat = t.category_id ? catById[t.category_id]?.name ?? "" : "";
+    return [
+      t.occurred_on,
+      kind,
+      t.note ?? "",
+      t.purpose ?? "",
+      cat,
+      accountById[t.account_id]?.name ?? "",
+      t.loan_account_id ? accountById[t.loan_account_id]?.name ?? "" : "",
+      t.transfer_to_account_id ? accountById[t.transfer_to_account_id]?.name ?? "" : "",
+      String(t.amount).replace(".", ","),
+    ];
+  });
+  const csv = [header, ...rows].map((r) => r.map(csvEscape).join(";")).join("\n");
+  const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `transaktionen-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
