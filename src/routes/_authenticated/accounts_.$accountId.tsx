@@ -1,10 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useAccountBalances, useTransactions, useCategories, useAccounts, type Transaction } from "@/lib/queries";
 import { fmtEUR, fmtDate, accountTypeLabel } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,9 +14,9 @@ import { useAuth } from "@/lib/auth-context";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from "recharts";
-import { ChevronLeft, Wallet, CreditCard, Landmark, TrendingDown, Activity, Hash, Plus, Pencil, Copy, Trash2, Search, Download, Upload } from "lucide-react";
+import { ChevronLeft, Wallet, CreditCard, Landmark, TrendingDown, Activity, Hash, Plus, Pencil, Copy, Trash2, Search, Download, Upload, X } from "lucide-react";
 import { toast } from "sonner";
-import { TransactionDialog } from "./transactions";
+import { TransactionDialog, BulkEditDialog } from "./transactions";
 import { CsvImportDialog } from "@/components/CsvImportDialog";
 
 export const Route = createFileRoute("/_authenticated/accounts_/$accountId")({
