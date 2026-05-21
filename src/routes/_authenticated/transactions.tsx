@@ -20,14 +20,16 @@ import { Plus, Trash2, Pencil, X, Copy, CalendarRange, Search, Download, Upload 
 import { toast } from "sonner";
 import { CsvImportDialog } from "@/components/CsvImportDialog";
 
-type RelRange = { amount: number; unit: "month" | "year" };
+type RelRange = { amount: number; unit: "month" | "year" | "all" };
 const PRESETS: { label: string; value: RelRange }[] = [
+  { label: "Alle",     value: { amount: 0, unit: "all" } },
   { label: "1 Monat",  value: { amount: 1, unit: "month" } },
   { label: "3 Monate", value: { amount: 3, unit: "month" } },
   { label: "6 Monate", value: { amount: 6, unit: "month" } },
   { label: "1 Jahr",   value: { amount: 1, unit: "year" } },
 ];
-function relToFromTo(r: RelRange): { from: string; to: string } {
+function relToFromTo(r: RelRange): { from?: string; to?: string } {
+  if (r.unit === "all") return {};
   const to = new Date();
   const from = new Date();
   if (r.unit === "month") from.setMonth(from.getMonth() - r.amount);
@@ -47,7 +49,7 @@ function TransactionsPage() {
   const [view, setView] = useState<ViewKind>("all");
   const [filterAccount, setFilterAccount] = useState<string>("all");
   const [filterCategory, setFilterCategory] = useState<string>("all");
-  const [range, setRange] = useState<RelRange>({ amount: 3, unit: "month" });
+  const [range, setRange] = useState<RelRange>({ amount: 0, unit: "all" });
   const now = new Date();
   const [fromYear, setFromYear] = useState<string>("all");
   const [fromMonth, setFromMonth] = useState<string>("all");
@@ -553,20 +555,24 @@ function TransactionsPage() {
   );
 }
 
-function BulkEditDialog({ open, onOpenChange, ids, onDone }: { open: boolean; onOpenChange: (v: boolean) => void; ids: string[]; onDone: () => void }) {
+export function BulkEditDialog({ open, onOpenChange, ids, onDone, fields }: { open: boolean; onOpenChange: (v: boolean) => void; ids: string[]; onDone: () => void; fields?: Array<"account" | "loan" | "category" | "kind" | "interest" | "anyfin"> }) {
   const accounts = useAccounts();
   const categories = useCategories();
   const [accountId, setAccountId] = useState<string>("");
   const [loanAccountId, setLoanAccountId] = useState<string>("");
   const [categoryId, setCategoryId] = useState<string>("");
+  const [kind, setKind] = useState<string>("");
   const [interestStr, setInterestStr] = useState<string>("");
   const [setAnyfin, setSetAnyfin] = useState(false);
   const [anyfinValue, setAnyfinValue] = useState(false);
   const [busy, setBusy] = useState(false);
 
+  const show = (k: "account" | "loan" | "category" | "kind" | "interest" | "anyfin") =>
+    fields ? fields.includes(k) : (k !== "kind"); // default: all except kind (legacy)
+
   useEffect(() => {
     if (open) {
-      setAccountId(""); setLoanAccountId(""); setCategoryId("");
+      setAccountId(""); setLoanAccountId(""); setCategoryId(""); setKind("");
       setInterestStr(""); setSetAnyfin(false); setAnyfinValue(false);
     }
   }, [open]);
@@ -577,17 +583,22 @@ function BulkEditDialog({ open, onOpenChange, ids, onDone }: { open: boolean; on
   const submit = async () => {
     if (ids.length === 0) return;
     const patch: Record<string, any> = {};
-    if (accountId) patch.account_id = accountId;
-    if (loanAccountId === "__none__") patch.loan_account_id = null;
-    else if (loanAccountId) patch.loan_account_id = loanAccountId;
-    if (categoryId === "__none__") patch.category_id = null;
-    else if (categoryId) patch.category_id = categoryId;
-    if (interestStr.trim() !== "") {
+    if (show("account") && accountId) patch.account_id = accountId;
+    if (show("loan")) {
+      if (loanAccountId === "__none__") patch.loan_account_id = null;
+      else if (loanAccountId) patch.loan_account_id = loanAccountId;
+    }
+    if (show("category")) {
+      if (categoryId === "__none__") patch.category_id = null;
+      else if (categoryId) patch.category_id = categoryId;
+    }
+    if (show("kind") && kind) patch.kind = kind;
+    if (show("interest") && interestStr.trim() !== "") {
       const n = Number(interestStr);
       if (!Number.isFinite(n)) { toast.error("Ungültige Zinsen"); return; }
       patch.interest_amount = n;
     }
-    if (setAnyfin) patch.is_anyfin = anyfinValue;
+    if (show("anyfin") && setAnyfin) patch.is_anyfin = anyfinValue;
 
     if (Object.keys(patch).length === 0) {
       toast.error("Keine Änderungen ausgewählt");
@@ -612,59 +623,83 @@ function BulkEditDialog({ open, onOpenChange, ids, onDone }: { open: boolean; on
           Nur Felder, die du hier setzt, werden überschrieben. Leere Felder bleiben unverändert.
         </p>
         <div className="space-y-3">
-          <div>
-            <Label>Konto</Label>
-            <Select value={accountId} onValueChange={setAccountId}>
-              <SelectTrigger><SelectValue placeholder="Unverändert lassen" /></SelectTrigger>
-              <SelectContent>
-                {bankAccounts.map((a) => <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}{a.type === "clearing" ? " (Verrechnung)" : ""}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>Verknüpftes Konto (Kredit/Karte/Darlehen)</Label>
-            <Select value={loanAccountId} onValueChange={setLoanAccountId}>
-              <SelectTrigger><SelectValue placeholder="Unverändert lassen" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">— Entfernen —</SelectItem>
-                {loanAccounts.map((a) => <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>Kategorie</Label>
-            <Select value={categoryId} onValueChange={setCategoryId}>
-              <SelectTrigger><SelectValue placeholder="Unverändert lassen" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">— Entfernen —</SelectItem>
-                {(categories.data ?? []).map((c) => <SelectItem key={c.id} value={c.id}>{c.icon} {c.name} ({c.kind === "income" ? "Einn." : "Ausg."})</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>Zinsen (€)</Label>
-            <Input
-              type="number" step="0.01" min="0"
-              placeholder="Unverändert lassen"
-              value={interestStr}
-              onChange={(e) => setInterestStr(e.target.value)}
-            />
-          </div>
-          <div className="flex items-center justify-between rounded-md border p-3">
+          {show("account") && (
             <div>
-              <Label>Anyfin-Flag setzen</Label>
-              <p className="text-xs text-muted-foreground">Aktivieren, um den Anyfin-Status zu überschreiben.</p>
+              <Label>Konto</Label>
+              <Select value={accountId} onValueChange={setAccountId}>
+                <SelectTrigger><SelectValue placeholder="Unverändert lassen" /></SelectTrigger>
+                <SelectContent>
+                  {bankAccounts.map((a) => <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}{a.type === "clearing" ? " (Verrechnung)" : ""}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
-            <Switch checked={setAnyfin} onCheckedChange={setSetAnyfin} />
-          </div>
-          {setAnyfin && (
-            <div className="flex items-center justify-between rounded-md border p-3">
-              <Label>Wert</Label>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">{anyfinValue ? "Anyfin: Ja" : "Anyfin: Nein"}</span>
-                <Switch checked={anyfinValue} onCheckedChange={setAnyfinValue} />
+          )}
+          {show("kind") && (
+            <div>
+              <Label>Typ</Label>
+              <Select value={kind} onValueChange={setKind}>
+                <SelectTrigger><SelectValue placeholder="Unverändert lassen" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="income">Einnahme</SelectItem>
+                  <SelectItem value="expense">Ausgabe</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          {show("loan") && (
+            <div>
+              <Label>Verknüpftes Konto (Kredit/Karte/Darlehen)</Label>
+              <Select value={loanAccountId} onValueChange={setLoanAccountId}>
+                <SelectTrigger><SelectValue placeholder="Unverändert lassen" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">— Entfernen —</SelectItem>
+                  {loanAccounts.map((a) => <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          {show("category") && (
+            <div>
+              <Label>Kategorie</Label>
+              <Select value={categoryId} onValueChange={setCategoryId}>
+                <SelectTrigger><SelectValue placeholder="Unverändert lassen" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">— Entfernen —</SelectItem>
+                  {(categories.data ?? []).map((c) => <SelectItem key={c.id} value={c.id}>{c.icon} {c.name} ({c.kind === "income" ? "Einn." : "Ausg."})</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          {show("interest") && (
+            <div>
+              <Label>Zinsen (€)</Label>
+              <Input
+                type="number" step="0.01" min="0"
+                placeholder="Unverändert lassen"
+                value={interestStr}
+                onChange={(e) => setInterestStr(e.target.value)}
+              />
+            </div>
+          )}
+          {show("anyfin") && (
+            <>
+              <div className="flex items-center justify-between rounded-md border p-3">
+                <div>
+                  <Label>Anyfin-Flag setzen</Label>
+                  <p className="text-xs text-muted-foreground">Aktivieren, um den Anyfin-Status zu überschreiben.</p>
+                </div>
+                <Switch checked={setAnyfin} onCheckedChange={setSetAnyfin} />
               </div>
-            </div>
+              {setAnyfin && (
+                <div className="flex items-center justify-between rounded-md border p-3">
+                  <Label>Wert</Label>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">{anyfinValue ? "Anyfin: Ja" : "Anyfin: Nein"}</span>
+                    <Switch checked={anyfinValue} onCheckedChange={setAnyfinValue} />
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
         <DialogFooter>

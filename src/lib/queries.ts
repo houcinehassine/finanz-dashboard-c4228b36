@@ -135,6 +135,7 @@ export function useTransactions(filters?: { accountId?: string; loanAccountId?: 
       if (filters?.categoryId) q = q.eq("category_id", filters.categoryId);
       if (filters?.from) q = q.gte("occurred_on", filters.from);
       if (filters?.to) q = q.lte("occurred_on", filters.to);
+      q = q.limit(10000);
       const { data, error } = await q;
       if (error) throw error;
       return (data ?? []).map((t: any) => ({
