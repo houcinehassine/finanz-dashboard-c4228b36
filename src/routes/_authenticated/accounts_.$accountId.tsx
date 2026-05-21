@@ -300,6 +300,24 @@ function AccountDetailPage() {
         </div>
       </Card>
 
+      {/* Bulk action bar */}
+      {selected.size > 0 && (
+        <Card className="sticky top-2 z-20 flex flex-wrap items-center justify-between gap-3 border-primary/40 bg-primary/5 p-3">
+          <div className="text-sm font-medium">{selected.size} ausgewählt</div>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={() => setBulkEditOpen(true)}>
+              <Pencil className="mr-2 h-4 w-4" />Bearbeiten
+            </Button>
+            <Button size="sm" variant="destructive" onClick={() => setBulkDeleteOpen(true)}>
+              <Trash2 className="mr-2 h-4 w-4" />Löschen
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
+              <X className="mr-2 h-4 w-4" />Abbrechen
+            </Button>
+          </div>
+        </Card>
+      )}
+
       {/* Transactions */}
       <Card className="p-0 overflow-hidden">
         <div className="flex items-center justify-between border-b px-4 py-3">
@@ -317,10 +335,19 @@ function AccountDetailPage() {
             <table className="w-full text-sm">
               <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
                 <tr>
+                  <th className="px-3 py-2 w-10">
+                    <Checkbox
+                      checked={filteredList.length > 0 && filteredList.every((t) => selected.has(t.id))}
+                      onCheckedChange={(v) => setSelected(v ? new Set(filteredList.map((t) => t.id)) : new Set())}
+                      aria-label="Alle auswählen"
+                    />
+                  </th>
                   <th className="px-4 py-2 text-left font-medium">Datum</th>
                   <th className="px-4 py-2 text-left font-medium">Typ</th>
                   <th className="px-4 py-2 text-left font-medium">Bezeichnung</th>
+                  <th className="px-4 py-2 text-left font-medium">Verwendungszweck</th>
                   <th className="px-4 py-2 text-left font-medium">Kategorie</th>
+                  <th className="px-4 py-2 text-left font-medium">Verknüpfung</th>
                   <th className="px-4 py-2 text-right font-medium">Betrag</th>
                   <th className="px-4 py-2 text-right font-medium">Aktionen</th>
                 </tr>
@@ -332,12 +359,45 @@ function AccountDetailPage() {
                   const sign = isTransfer ? "" : t.kind === "income" ? "+" : "−";
                   const cls = isTransfer ? "text-muted-foreground" : t.kind === "income" ? "text-emerald-500" : "text-red-500";
                   const typeLbl = isTransfer ? "Umbuchung" : t.kind === "income" ? "Einnahme" : "Ausgabe";
+                  const acc = (accountsAll.data ?? []).find((a) => a.id === t.account_id);
+                  const dest = t.transfer_to_account_id ? (accountsAll.data ?? []).find((a) => a.id === t.transfer_to_account_id) : null;
+                  const loan = t.loan_account_id ? (accountsAll.data ?? []).find((a) => a.id === t.loan_account_id) : null;
+                  const isSel = selected.has(t.id);
+                  const AcctLink = ({ a }: { a: { id: string; name: string } }) => (
+                    <Link to="/accounts/$accountId" params={{ accountId: a.id }} className="font-medium text-primary hover:underline">{a.name}</Link>
+                  );
                   return (
-                    <tr key={t.id} className="border-t">
+                    <tr key={t.id} className="border-t" data-state={isSel ? "selected" : undefined}>
+                      <td className="px-3 py-2">
+                        <Checkbox
+                          checked={isSel}
+                          onCheckedChange={(v) => setSelected((prev) => { const n = new Set(prev); if (v) n.add(t.id); else n.delete(t.id); return n; })}
+                          aria-label="Auswählen"
+                        />
+                      </td>
                       <td className="px-4 py-2 whitespace-nowrap">{fmtDate(t.occurred_on)}</td>
                       <td className="px-4 py-2">{typeLbl}</td>
                       <td className="px-4 py-2">{t.note || "—"}</td>
+                      <td className="px-4 py-2 max-w-[180px] truncate text-xs text-muted-foreground" title={t.purpose ?? ""}>{t.purpose ?? "—"}</td>
                       <td className="px-4 py-2">{c ? `${c.icon} ${c.name}` : "—"}</td>
+                      <td className="px-4 py-2 text-xs">
+                        {isTransfer ? (
+                          <div className="flex flex-col gap-0.5">
+                            <span><span className="text-muted-foreground">Aus: </span>{acc ? <AcctLink a={acc} /> : "—"}</span>
+                            <span><span className="text-muted-foreground">Ein: </span>{dest ? <AcctLink a={dest} /> : "—"}</span>
+                          </div>
+                        ) : loan ? (
+                          <div className="flex flex-col gap-0.5">
+                            <span><span className="text-muted-foreground">Konto: </span>{acc ? <AcctLink a={acc} /> : "—"}</span>
+                            <span>
+                              <span className="text-muted-foreground">{loan.type === "darlehen" ? "Darlehen: " : "Kredit: "}</span>
+                              <AcctLink a={loan} />
+                            </span>
+                          </div>
+                        ) : (
+                          acc ? <AcctLink a={acc} /> : "—"
+                        )}
+                      </td>
                       <td className={`px-4 py-2 text-right font-medium ${cls}`}>{sign}{fmtEUR(t.amount)}</td>
                       <td className="px-4 py-2 text-right whitespace-nowrap">
                         <Button size="icon" variant="ghost" onClick={() => { setEditingTx(t); setDialogOpen(true); }} title="Bearbeiten"><Pencil className="h-4 w-4" /></Button>
@@ -352,6 +412,37 @@ function AccountDetailPage() {
           </div>
         )}
       </Card>
+
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{selected.size} Einträge wirklich löschen?</AlertDialogTitle>
+            <AlertDialogDescription>Diese Aktion kann nicht rückgängig gemacht werden.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                const ids = Array.from(selected);
+                const { error } = await supabase.from("transactions").delete().in("id", ids);
+                if (error) toast.error(error.message);
+                else { toast.success(`${ids.length} gelöscht`); setSelected(new Set()); refresh(); }
+                setBulkDeleteOpen(false);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >Löschen</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <BulkEditDialog
+        open={bulkEditOpen}
+        onOpenChange={setBulkEditOpen}
+        ids={Array.from(selected)}
+        fields={["category", "kind", "loan"]}
+        onDone={() => { setSelected(new Set()); refresh(); }}
+      />
+
 
       <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) setEditingTx(null); }}>
         <TransactionDialog
