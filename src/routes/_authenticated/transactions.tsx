@@ -20,14 +20,16 @@ import { Plus, Trash2, Pencil, X, Copy, CalendarRange, Search, Download, Upload 
 import { toast } from "sonner";
 import { CsvImportDialog } from "@/components/CsvImportDialog";
 
-type RelRange = { amount: number; unit: "month" | "year" };
+type RelRange = { amount: number; unit: "month" | "year" | "all" };
 const PRESETS: { label: string; value: RelRange }[] = [
+  { label: "Alle",     value: { amount: 0, unit: "all" } },
   { label: "1 Monat",  value: { amount: 1, unit: "month" } },
   { label: "3 Monate", value: { amount: 3, unit: "month" } },
   { label: "6 Monate", value: { amount: 6, unit: "month" } },
   { label: "1 Jahr",   value: { amount: 1, unit: "year" } },
 ];
-function relToFromTo(r: RelRange): { from: string; to: string } {
+function relToFromTo(r: RelRange): { from?: string; to?: string } {
+  if (r.unit === "all") return {};
   const to = new Date();
   const from = new Date();
   if (r.unit === "month") from.setMonth(from.getMonth() - r.amount);
@@ -47,7 +49,7 @@ function TransactionsPage() {
   const [view, setView] = useState<ViewKind>("all");
   const [filterAccount, setFilterAccount] = useState<string>("all");
   const [filterCategory, setFilterCategory] = useState<string>("all");
-  const [range, setRange] = useState<RelRange>({ amount: 3, unit: "month" });
+  const [range, setRange] = useState<RelRange>({ amount: 0, unit: "all" });
   const now = new Date();
   const [fromYear, setFromYear] = useState<string>("all");
   const [fromMonth, setFromMonth] = useState<string>("all");
