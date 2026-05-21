@@ -40,6 +40,9 @@ function AccountDetailPage() {
   const [search, setSearch] = useState("");
   const [importOpen, setImportOpen] = useState(false);
   const accountsAll = useAccounts();
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkEditOpen, setBulkEditOpen] = useState(false);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["transactions"] });
