@@ -849,6 +849,11 @@ export function TransactionDialog({ tx, defaultKind, defaultAccountId, defaultLo
           <Label>Beschreibung</Label>
           <Input value={note} onChange={(e) => setNote(e.target.value)} />
         </div>
+        <div>
+          <Label>Verwendungszweck</Label>
+          <Input value={purpose} onChange={(e) => setPurpose(e.target.value)} placeholder="z.B. Rechnungsnummer, Notiz, Empfänger…" />
+        </div>
+        
         {!isTransfer && (
           <div>
             <Label>Verknüpfter Kredit / Kreditkarte / Darlehen (optional)</Label>
