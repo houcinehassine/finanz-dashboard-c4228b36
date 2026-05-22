@@ -722,6 +722,7 @@ export function TransactionDialog({ tx, defaultKind, defaultAccountId, defaultLo
   const [amount, setAmount] = useState(tx ? String(tx.amount) : "");
   const [date, setDate] = useState(tx?.occurred_on ?? new Date().toISOString().slice(0, 10));
   const [note, setNote] = useState(tx?.note ?? "");
+  const [purpose, setPurpose] = useState(tx?.purpose ?? "");
   const [loanAccountId, setLoanAccountId] = useState<string>(tx?.loan_account_id ?? defaultLoanAccountId ?? "none");
   const [busy, setBusy] = useState(false);
 
@@ -760,6 +761,7 @@ export function TransactionDialog({ tx, defaultKind, defaultAccountId, defaultLo
       amount: Number(amount) || 0,
       occurred_on: date,
       note: note || null,
+      purpose: purpose || null,
     };
     const { error } = tx?.id
       ? await supabase.from("transactions").update(payload).eq("id", tx.id)
@@ -847,6 +849,11 @@ export function TransactionDialog({ tx, defaultKind, defaultAccountId, defaultLo
           <Label>Beschreibung</Label>
           <Input value={note} onChange={(e) => setNote(e.target.value)} />
         </div>
+        <div>
+          <Label>Verwendungszweck</Label>
+          <Input value={purpose} onChange={(e) => setPurpose(e.target.value)} placeholder="z.B. Rechnungsnummer, Notiz, Empfänger…" />
+        </div>
+        
         {!isTransfer && (
           <div>
             <Label>Verknüpfter Kredit / Kreditkarte / Darlehen (optional)</Label>

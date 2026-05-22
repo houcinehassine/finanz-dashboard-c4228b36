@@ -11,6 +11,7 @@ import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/integrations/supabase/client";
 import { LogOut, User, Globe, FileUp, ListChecks, Tags, Sun, Moon, Trash2 } from "lucide-react";
 import { CategoriesManager } from "@/components/CategoriesManager";
+import { RulesManager } from "@/components/RulesManager";
 import { usePreferences } from "@/lib/preferences";
 import { deleteMyAccount } from "@/lib/account.functions";
 import { toast } from "sonner";
@@ -122,10 +123,7 @@ function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="rules" className="mt-4">
-          <Card className="p-5">
-            <h2 className="mb-1 text-sm font-semibold">Regeln</h2>
-            <p className="text-sm text-muted-foreground">Automatische Kategorisierung nach Beschreibungs-Mustern. Bald verfügbar.</p>
-          </Card>
+          <RulesManager />
         </TabsContent>
 
         <TabsContent value="categories" className="mt-4">

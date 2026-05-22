@@ -16,6 +16,7 @@ import {
 } from "recharts";
 import { ChevronLeft, Wallet, CreditCard, Landmark, TrendingDown, Activity, Hash, Plus, Pencil, Copy, Trash2, Search, Download, Upload, X } from "lucide-react";
 import { toast } from "sonner";
+import { pickBucket, bucketOf } from "@/lib/aggregate";
 import { TransactionDialog, BulkEditDialog } from "./transactions";
 import { CsvImportDialog } from "@/components/CsvImportDialog";
 
@@ -132,50 +133,58 @@ function AccountDetailPage() {
     return { positive, negative, avg, months: months.size, count: tList.length };
   }, [tList, isLoanLike, accountId]);
 
-  // Saldo-Verlauf: monthly running balance backwards from current
+  // Saldo-Verlauf: dynamische Bucket-Aggregation aus aggregate.ts
   const series = useMemo(() => {
     if (!account) return [];
+    if (tList.length === 0) return [];
     const dates = tList.map((t) => t.occurred_on).sort();
-    const firstDate = dates[0] ?? new Date().toISOString().slice(0, 10);
-    const lastDate = dates[dates.length - 1] ?? new Date().toISOString().slice(0, 10);
-    const fromD = new Date(firstDate + "T00:00:00");
-    const toD = new Date(lastDate + "T00:00:00");
-    const months: { key: string; label: string }[] = [];
-    const cursor = new Date(fromD.getFullYear(), fromD.getMonth(), 1);
-    const end = new Date(toD.getFullYear(), toD.getMonth(), 1);
-    while (cursor <= end) {
-      const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`;
-      months.push({ key, label: key });
-      cursor.setMonth(cursor.getMonth() + 1);
-    }
-    if (months.length === 0) return [];
-    const deltaByMonth = new Map<string, number>();
-    for (const t of tList) {
-      const k = t.occurred_on.slice(0, 7);
-      deltaByMonth.set(k, (deltaByMonth.get(k) ?? 0) + signFor(t) * t.amount);
-    }
-    // Walk back from current balance through months AFTER the range to get end-of-range balance
-    const nowKey = new Date().toISOString().slice(0, 7);
-    let running = account.balance;
-    const lastKey = months[months.length - 1].key;
-    if (nowKey > lastKey) {
-      const c = new Date();
-      const cur = new Date(c.getFullYear(), c.getMonth(), 1);
-      while (true) {
-        const k = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, "0")}`;
-        if (k <= lastKey) break;
-        running -= deltaByMonth.get(k) ?? 0;
-        cur.setMonth(cur.getMonth() - 1);
+    const firstDate = dates[0];
+    const today = new Date().toISOString().slice(0, 10);
+    const lastDate = dates[dates.length - 1] > today ? dates[dates.length - 1] : today;
+    const bucket = pickBucket(firstDate, lastDate);
+
+    // Compute delta per bucket
+    const deltaByKey = new Map<string, number>();
+    const labelByKey = new Map<string, string>();
+    const bucketKeys: string[] = [];
+    // Walk every day from firstDate to lastDate to seed empty buckets so the line is continuous
+    const seed = (iso: string) => {
+      const b = bucketOf(iso, bucket);
+      if (!labelByKey.has(b.key)) {
+        labelByKey.set(b.key, b.label);
+        bucketKeys.push(b.key);
       }
+    };
+    // Seed with all tx dates first
+    for (const t of tList) seed(t.occurred_on);
+    seed(lastDate);
+    bucketKeys.sort();
+
+    for (const t of tList) {
+      const b = bucketOf(t.occurred_on, bucket);
+      deltaByKey.set(b.key, (deltaByKey.get(b.key) ?? 0) + signFor(t) * t.amount);
     }
+
+    // Walk backwards from current balance: end-of-bucket balance = current balance minus all deltas in buckets strictly after this one (relative to today's bucket).
+    const todayBucket = bucketOf(today, bucket).key;
+    // end-of-bucket value for each key: includes all deltas up to and including that bucket
+    // current balance reflects all deltas up to today (inclusive of today's bucket if any)
+    // end[k] = balance - sum(delta[k'] for k' > k)
+    let suffixAfter = 0;
     const endBal = new Map<string, number>();
-    const sortedDesc = [...months].reverse();
-    for (const m of sortedDesc) {
-      endBal.set(m.key, running);
-      const delta = deltaByMonth.get(m.key) ?? 0;
-      running = running - delta;
+    const desc = [...bucketKeys].sort().reverse();
+    for (const k of desc) {
+      if (k > todayBucket) {
+        // future buckets — exclude them entirely (skip)
+        suffixAfter += deltaByKey.get(k) ?? 0;
+        continue;
+      }
+      endBal.set(k, account.balance - suffixAfter);
+      suffixAfter += deltaByKey.get(k) ?? 0;
     }
-    return months.map((m) => ({ label: m.label, balance: endBal.get(m.key) ?? 0 }));
+    return bucketKeys
+      .filter((k) => k <= todayBucket)
+      .map((k) => ({ label: labelByKey.get(k) ?? k, balance: endBal.get(k) ?? 0 }));
   }, [tList, account, isLoanLike]);
 
   if (!balances.data) {
