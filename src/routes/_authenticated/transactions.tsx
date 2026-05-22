@@ -761,6 +761,7 @@ export function TransactionDialog({ tx, defaultKind, defaultAccountId, defaultLo
       amount: Number(amount) || 0,
       occurred_on: date,
       note: note || null,
+      purpose: purpose || null,
     };
     const { error } = tx?.id
       ? await supabase.from("transactions").update(payload).eq("id", tx.id)
