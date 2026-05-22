@@ -123,10 +123,7 @@ function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="rules" className="mt-4">
-          <Card className="p-5">
-            <h2 className="mb-1 text-sm font-semibold">Regeln</h2>
-            <p className="text-sm text-muted-foreground">Automatische Kategorisierung nach Beschreibungs-Mustern. Bald verfügbar.</p>
-          </Card>
+          <RulesManager />
         </TabsContent>
 
         <TabsContent value="categories" className="mt-4">
