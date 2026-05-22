@@ -143,22 +143,25 @@ function DashboardPage() {
       .sort((a, b) => a.occurred_on.localeCompare(b.occurred_on));
     if (relevant.length === 0) return { keys: [], data: [] };
 
+    const firstD = relevant[0].occurred_on;
+    const lastD = relevant[relevant.length - 1].occurred_on;
+    const bucket = pickBucket(firstD, lastD);
+
     const remaining = new Map<string, number>();
     for (const l of loans) remaining.set(l.id, Math.max(0, -l.starting_balance));
 
-    const months = new Set<string>();
-    for (const t of relevant) months.add(t.occurred_on.slice(0, 7));
-    const sortedMonths = Array.from(months).sort();
-
+    // Map: bucketKey -> { label, ...loanRemaining }
+    const seenKeys: { key: string; label: string }[] = [];
     const points: Array<Record<string, number | string>> = [];
     let idx = 0;
-    for (const month of sortedMonths) {
-      while (idx < relevant.length && relevant[idx].occurred_on.slice(0, 7) <= month) {
+    while (idx < relevant.length) {
+      const b = bucketOf(relevant[idx].occurred_on, bucket);
+      // process all tx in this bucket
+      while (idx < relevant.length && bucketOf(relevant[idx].occurred_on, bucket).key === b.key) {
         const t = relevant[idx];
         if (loanIds.has(t.account_id)) {
           const cur = remaining.get(t.account_id) ?? 0;
           if (t.kind === "transfer") {
-            // outgoing transfer from loan = increases debt
             remaining.set(t.account_id, Math.max(0, cur + t.amount));
           } else {
             remaining.set(t.account_id, Math.max(0, cur + (t.kind === "expense" ? t.amount : -t.amount)));
@@ -169,15 +172,15 @@ function DashboardPage() {
           remaining.set(t.loan_account_id, Math.max(0, cur - t.amount));
         }
         if (t.kind === "transfer" && t.transfer_to_account_id && loanIds.has(t.transfer_to_account_id)) {
-          // incoming transfer to loan = principal payment
           const cur = remaining.get(t.transfer_to_account_id) ?? 0;
           remaining.set(t.transfer_to_account_id, Math.max(0, cur - t.amount));
         }
         idx++;
       }
-      const point: Record<string, number | string> = { month, label: fmtMonth(month + "-01") };
+      const point: Record<string, number | string> = { key: b.key, label: b.label };
       for (const l of loans) point[l.id] = remaining.get(l.id) ?? 0;
       points.push(point);
+      seenKeys.push(b);
     }
 
     return {
