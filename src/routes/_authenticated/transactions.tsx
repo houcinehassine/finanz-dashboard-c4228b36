@@ -722,6 +722,7 @@ export function TransactionDialog({ tx, defaultKind, defaultAccountId, defaultLo
   const [amount, setAmount] = useState(tx ? String(tx.amount) : "");
   const [date, setDate] = useState(tx?.occurred_on ?? new Date().toISOString().slice(0, 10));
   const [note, setNote] = useState(tx?.note ?? "");
+  const [purpose, setPurpose] = useState(tx?.purpose ?? "");
   const [loanAccountId, setLoanAccountId] = useState<string>(tx?.loan_account_id ?? defaultLoanAccountId ?? "none");
   const [busy, setBusy] = useState(false);
 
