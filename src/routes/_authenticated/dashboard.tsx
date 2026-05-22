@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAccountBalances, useTransactions, useCategories } from "@/lib/queries";
-import { fmtEUR, fmtMonth, accountTypeLabel } from "@/lib/format";
+import { fmtEUR, accountTypeLabel } from "@/lib/format";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, RadialBarChart, RadialBar, PolarAngleAxis, LineChart, Line, CartesianGrid } from "recharts";
 import { TrendingUp, TrendingDown, Wallet, CreditCard, PiggyBank, Landmark } from "lucide-react";
 import { DateRangePicker, DEFAULT_RANGE, rangeLabel, rangeToFromTo, type RangeValue } from "@/components/DateRangePicker";
