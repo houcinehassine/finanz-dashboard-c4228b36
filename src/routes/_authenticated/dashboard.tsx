@@ -8,6 +8,7 @@ import { fmtEUR, fmtMonth, accountTypeLabel } from "@/lib/format";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, RadialBarChart, RadialBar, PolarAngleAxis, LineChart, Line, CartesianGrid } from "recharts";
 import { TrendingUp, TrendingDown, Wallet, CreditCard, PiggyBank, Landmark } from "lucide-react";
 import { DateRangePicker, DEFAULT_RANGE, rangeLabel, rangeToFromTo, type RangeValue } from "@/components/DateRangePicker";
+import { pickBucket, bucketOf, groupByBucket } from "@/lib/aggregate";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: DashboardPage,
