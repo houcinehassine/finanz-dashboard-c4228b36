@@ -62,18 +62,19 @@ function DashboardPage() {
   );
 
   const monthlyInRange = useMemo(() => {
-    const map = new Map<string, { month: string; income: number; expense: number }>();
-    for (const t of liquidTxs) {
-      const key = t.occurred_on.slice(0, 7);
-      const cur = map.get(key) ?? { month: key, income: 0, expense: 0 };
-      if (t.kind === "income") cur.income += Number(t.amount);
-      else if (t.kind === "expense") cur.expense += Number(t.amount);
-      map.set(key, cur);
-    }
-    return Array.from(map.values())
-      .sort((a, b) => a.month.localeCompare(b.month))
-      .map((r) => ({ ...r, label: fmtMonth(r.month), net: r.income - r.expense }));
-  }, [liquidTxs]);
+    if (liquidTxs.length === 0) return [];
+    const bucket = pickBucket(from, to);
+    const grouped = groupByBucket(liquidTxs, bucket, (t) => ({
+      income: t.kind === "income" ? Number(t.amount) : 0,
+      expense: t.kind === "expense" ? Number(t.amount) : 0,
+    }));
+    return grouped.map((g) => ({
+      label: g.label,
+      income: Number(g.income ?? 0),
+      expense: Number(g.expense ?? 0),
+      net: Number(g.income ?? 0) - Number(g.expense ?? 0),
+    }));
+  }, [liquidTxs, from, to]);
 
   const periodTotals = useMemo(() => {
     let income = 0, expense = 0;
