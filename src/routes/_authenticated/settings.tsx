@@ -11,6 +11,7 @@ import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/integrations/supabase/client";
 import { LogOut, User, Globe, FileUp, ListChecks, Tags, Sun, Moon, Trash2 } from "lucide-react";
 import { CategoriesManager } from "@/components/CategoriesManager";
+import { RulesManager } from "@/components/RulesManager";
 import { usePreferences } from "@/lib/preferences";
 import { deleteMyAccount } from "@/lib/account.functions";
 import { toast } from "sonner";
