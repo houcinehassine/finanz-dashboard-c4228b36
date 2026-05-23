@@ -106,45 +106,60 @@ export type Database = {
       }
       import_rules: {
         Row: {
+          action_account_id: string | null
           action_category_id: string | null
           action_kind: string | null
           action_loan_account_id: string | null
+          action_note: string | null
+          action_transfer_to_account_id: string | null
           active: boolean
-          condition_field: string
-          condition_op: string
-          condition_value: string
+          condition_field: string | null
+          condition_op: string | null
+          condition_value: string | null
+          conditions: Json
           created_at: string
           id: string
+          logic: string
           name: string
           priority: number
           updated_at: string
           user_id: string
         }
         Insert: {
+          action_account_id?: string | null
           action_category_id?: string | null
           action_kind?: string | null
           action_loan_account_id?: string | null
+          action_note?: string | null
+          action_transfer_to_account_id?: string | null
           active?: boolean
-          condition_field: string
-          condition_op: string
-          condition_value: string
+          condition_field?: string | null
+          condition_op?: string | null
+          condition_value?: string | null
+          conditions?: Json
           created_at?: string
           id?: string
+          logic?: string
           name: string
           priority?: number
           updated_at?: string
           user_id: string
         }
         Update: {
+          action_account_id?: string | null
           action_category_id?: string | null
           action_kind?: string | null
           action_loan_account_id?: string | null
+          action_note?: string | null
+          action_transfer_to_account_id?: string | null
           active?: boolean
-          condition_field?: string
-          condition_op?: string
-          condition_value?: string
+          condition_field?: string | null
+          condition_op?: string | null
+          condition_value?: string | null
+          conditions?: Json
           created_at?: string
           id?: string
+          logic?: string
           name?: string
           priority?: number
           updated_at?: string
