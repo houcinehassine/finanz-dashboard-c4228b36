@@ -129,7 +129,7 @@ function TransactionsPage() {
   const accountById = useMemo(() => Object.fromEntries((accounts.data ?? []).map((a) => [a.id, a])), [accounts.data]);
   const catById = useMemo(() => Object.fromEntries((categories.data ?? []).map((c) => [c.id, c])), [categories.data]);
 
-  // Categories available: only those used in transactions matching current view + account + date filters
+  // Categories available: only those used in transactions matching current view + date filters
   const availableCategoryIds = useMemo(() => {
     const ids = new Set<string>();
     for (const t of txs.data ?? []) {
