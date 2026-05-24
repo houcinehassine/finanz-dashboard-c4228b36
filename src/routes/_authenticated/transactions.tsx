@@ -143,7 +143,21 @@ function TransactionsPage() {
   const [importOpen, setImportOpen] = useState(false);
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const base = (txs.data ?? []).filter((t) => view === "all" || t.kind === view);
+    const minN = amountMin.trim() !== "" ? Number(amountMin.replace(",", ".")) : null;
+    const maxN = amountMax.trim() !== "" ? Number(amountMax.replace(",", ".")) : null;
+    let base = (txs.data ?? []).filter((t) => view === "all" || t.kind === view);
+    if (filterAccountIds.size > 0) {
+      base = base.filter((t) =>
+        filterAccountIds.has(t.account_id) ||
+        (t.loan_account_id && filterAccountIds.has(t.loan_account_id)) ||
+        (t.transfer_to_account_id && filterAccountIds.has(t.transfer_to_account_id))
+      );
+    }
+    if (filterCategoryIds.size > 0) {
+      base = base.filter((t) => t.category_id && filterCategoryIds.has(t.category_id));
+    }
+    if (minN != null && Number.isFinite(minN)) base = base.filter((t) => Number(t.amount) >= minN);
+    if (maxN != null && Number.isFinite(maxN)) base = base.filter((t) => Number(t.amount) <= maxN);
     if (!q) return base;
     return base.filter((t) => {
       const c = t.category_id ? catById[t.category_id] : null;
@@ -156,7 +170,7 @@ function TransactionsPage() {
         String(t.amount).includes(q)
       );
     });
-  }, [txs.data, view, search, catById, accountById]);
+  }, [txs.data, view, search, catById, accountById, filterAccountIds, filterCategoryIds, amountMin, amountMax]);
   const totals = useMemo(() => {
     let income = 0, expense = 0, transfers = 0;
     for (const t of filtered) {
