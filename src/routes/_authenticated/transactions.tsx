@@ -50,8 +50,10 @@ function TransactionsPage() {
   const accounts = useAccounts();
   const categories = useCategories();
   const [view, setView] = useState<ViewKind>("all");
-  const [filterAccount, setFilterAccount] = useState<string>("all");
-  const [filterCategory, setFilterCategory] = useState<string>("all");
+  const [filterAccountIds, setFilterAccountIds] = useState<Set<string>>(new Set());
+  const [filterCategoryIds, setFilterCategoryIds] = useState<Set<string>>(new Set());
+  const [amountMin, setAmountMin] = useState<string>("");
+  const [amountMax, setAmountMax] = useState<string>("");
   const [range, setRange] = useState<RelRange>({ amount: 0, unit: "all" });
   const now = new Date();
   const [fromYear, setFromYear] = useState<string>("all");
