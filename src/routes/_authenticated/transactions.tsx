@@ -256,48 +256,13 @@ function TransactionsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <div className="text-xs uppercase tracking-widest text-muted-foreground">Transaktionen</div>
-          <h1 className="text-3xl font-bold">{title}</h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <Select value={view} onValueChange={(v) => setView(v as ViewKind)}>
-            <SelectTrigger className="w-auto min-w-[7rem] gap-2"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Alle</SelectItem>
-              <SelectItem value="expense">Ausgaben</SelectItem>
-              <SelectItem value="income">Einnahmen</SelectItem>
-              <SelectItem value="transfer">Umbuchungen</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={filterAccount} onValueChange={setFilterAccount}>
-            <SelectTrigger className="w-auto min-w-[7rem] gap-2"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Alle Konten</SelectItem>
-              {(accounts.data ?? [])
-                .filter((a) => !a.archived && (usedAccountIds.has(a.id) || a.id === filterAccount))
-                .map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={filterCategory} onValueChange={setFilterCategory}>
-            <SelectTrigger className="w-auto min-w-[7rem] gap-2"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Alle Kategorien</SelectItem>
-              {(categories.data ?? [])
-                .filter((c) => view === "all" || c.kind === view)
-                .filter((c) => availableCategoryIds.has(c.id) || c.id === filterCategory)
-                .map((c) => <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
-            <DialogTrigger asChild>
-              <Button onClick={() => setEditing(null)}><Plus className="mr-2 h-4 w-4" />{newLabel}</Button>
-            </DialogTrigger>
-            <TransactionDialog key={editing?.id ?? "new"} tx={editing} defaultKind={dialogDefaultKind} onClose={() => { setOpen(false); setEditing(null); refresh(); }} />
-          </Dialog>
-        </div>
+      <div>
+        <div className="text-xs uppercase tracking-widest text-muted-foreground">Transaktionen</div>
+        <h1 className="text-3xl font-bold">{title}</h1>
       </div>
+
+      <TimeSeriesGraph items={filtered} fromISO={from} toISO={to} />
+
 
       <Card className="p-3">
         <div className="flex flex-wrap items-start justify-between gap-4">
