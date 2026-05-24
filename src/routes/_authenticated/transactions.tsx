@@ -86,8 +86,6 @@ function TransactionsPage() {
   }, [range, fromYear, fromMonth, toYear, toMonth, ymActive, allTxs.data]);
 
   const txs = useTransactions({
-    accountId: filterAccount === "all" ? undefined : filterAccount,
-    categoryId: filterCategory === "all" ? undefined : filterCategory,
     from,
     to,
   });
