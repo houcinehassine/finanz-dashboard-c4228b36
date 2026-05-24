@@ -785,7 +785,7 @@ export function TransactionDialog({ tx, defaultKind, defaultAccountId, defaultLo
   const [busy, setBusy] = useState(false);
 
   const isTransfer = kind === "transfer";
-  const filteredCats = (categories.data ?? []).filter((c) => c.kind === kind);
+  const filteredCats = (categories.data ?? []);
   const bankAccounts = (accounts.data ?? []).filter((a) => a.type === "checking" || a.type === "savings" || a.type === "clearing" || a.type === "credit_card");
   const loanAccounts = (accounts.data ?? []).filter((a) => a.type === "loan" || a.type === "darlehen");
   // For transfers, allow ANY account (bank, clearing, loan, card) on both sides
