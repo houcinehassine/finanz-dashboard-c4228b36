@@ -384,6 +384,82 @@ function TransactionsPage() {
         />
       </Dialog>
 
+      {/* Filter bar */}
+      <Card className="p-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={view} onValueChange={(v) => setView(v as ViewKind)}>
+            <SelectTrigger className="h-9 w-auto min-w-[8rem] gap-2"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Alle Typen</SelectItem>
+              <SelectItem value="income">Einnahme</SelectItem>
+              <SelectItem value="expense">Ausgabe</SelectItem>
+              <SelectItem value="transfer">Umbuchung</SelectItem>
+            </SelectContent>
+          </Select>
+          <MultiSelect
+            placeholder="Kategorie"
+            selected={filterCategoryIds}
+            onChange={setFilterCategoryIds}
+            options={(categories.data ?? [])
+              .filter((c) => availableCategoryIds.has(c.id) || filterCategoryIds.has(c.id))
+              .map((c) => ({ value: c.id, label: `${c.icon} ${c.name}` }))}
+          />
+          <MultiSelect
+            placeholder="Konto"
+            selected={filterAccountIds}
+            onChange={setFilterAccountIds}
+            options={(accounts.data ?? [])
+              .filter((a) => !a.archived && (usedAccountIds.has(a.id) || filterAccountIds.has(a.id)))
+              .map((a) => ({ value: a.id, label: a.name }))}
+          />
+          <div className="flex items-center gap-1">
+            <Input
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              placeholder="Betrag von"
+              value={amountMin}
+              onChange={(e) => setAmountMin(e.target.value)}
+              className="h-9 w-28"
+            />
+            <span className="text-xs text-muted-foreground">–</span>
+            <Input
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              placeholder="bis"
+              value={amountMax}
+              onChange={(e) => setAmountMax(e.target.value)}
+              className="h-9 w-24"
+            />
+          </div>
+          {(filterCategoryIds.size > 0 || filterAccountIds.size > 0 || amountMin || amountMax || view !== "all") && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setFilterCategoryIds(new Set());
+                setFilterAccountIds(new Set());
+                setAmountMin("");
+                setAmountMax("");
+                setView("all");
+              }}
+            >
+              <X className="mr-1 h-4 w-4" />Filter zurücksetzen
+            </Button>
+          )}
+          <div className="ml-auto">
+            <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
+              <DialogTrigger asChild>
+                <Button onClick={() => setEditing(null)}><Plus className="mr-2 h-4 w-4" />{newLabel}</Button>
+              </DialogTrigger>
+              <TransactionDialog key={editing?.id ?? "new"} tx={editing} defaultKind={dialogDefaultKind} onClose={() => { setOpen(false); setEditing(null); refresh(); }} />
+            </Dialog>
+          </div>
+        </div>
+      </Card>
+
+
       {selected.size > 0 && (
         <Card className="sticky top-2 z-20 flex flex-wrap items-center justify-between gap-3 border-primary/40 bg-primary/5 p-3">
           <div className="text-sm font-medium">{selected.size} ausgewählt</div>
