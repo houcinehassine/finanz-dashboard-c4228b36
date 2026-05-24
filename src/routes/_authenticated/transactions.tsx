@@ -19,6 +19,9 @@ import { useAuth } from "@/lib/auth-context";
 import { Plus, Trash2, Pencil, X, Copy, CalendarRange, Search, Download, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { CsvImportDialog } from "@/components/CsvImportDialog";
+import { MultiSelect } from "@/components/MultiSelect";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
+import { pickBucket, groupByBucket } from "@/lib/aggregate";
 
 type RelRange = { amount: number; unit: "month" | "year" | "all" };
 const PRESETS: { label: string; value: RelRange }[] = [
