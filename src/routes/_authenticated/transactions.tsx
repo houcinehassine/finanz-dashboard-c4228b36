@@ -19,6 +19,9 @@ import { useAuth } from "@/lib/auth-context";
 import { Plus, Trash2, Pencil, X, Copy, CalendarRange, Search, Download, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { CsvImportDialog } from "@/components/CsvImportDialog";
+import { MultiSelect } from "@/components/MultiSelect";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
+import { pickBucket, groupByBucket } from "@/lib/aggregate";
 
 type RelRange = { amount: number; unit: "month" | "year" | "all" };
 const PRESETS: { label: string; value: RelRange }[] = [
@@ -47,8 +50,10 @@ function TransactionsPage() {
   const accounts = useAccounts();
   const categories = useCategories();
   const [view, setView] = useState<ViewKind>("all");
-  const [filterAccount, setFilterAccount] = useState<string>("all");
-  const [filterCategory, setFilterCategory] = useState<string>("all");
+  const [filterAccountIds, setFilterAccountIds] = useState<Set<string>>(new Set());
+  const [filterCategoryIds, setFilterCategoryIds] = useState<Set<string>>(new Set());
+  const [amountMin, setAmountMin] = useState<string>("");
+  const [amountMax, setAmountMax] = useState<string>("");
   const [range, setRange] = useState<RelRange>({ amount: 0, unit: "all" });
   const now = new Date();
   const [fromYear, setFromYear] = useState<string>("all");
@@ -81,8 +86,6 @@ function TransactionsPage() {
   }, [range, fromYear, fromMonth, toYear, toMonth, ymActive, allTxs.data]);
 
   const txs = useTransactions({
-    accountId: filterAccount === "all" ? undefined : filterAccount,
-    categoryId: filterCategory === "all" ? undefined : filterCategory,
     from,
     to,
   });
@@ -126,7 +129,7 @@ function TransactionsPage() {
   const accountById = useMemo(() => Object.fromEntries((accounts.data ?? []).map((a) => [a.id, a])), [accounts.data]);
   const catById = useMemo(() => Object.fromEntries((categories.data ?? []).map((c) => [c.id, c])), [categories.data]);
 
-  // Categories available: only those used in transactions matching current view + account + date filters
+  // Categories available: only those used in transactions matching current view + date filters
   const availableCategoryIds = useMemo(() => {
     const ids = new Set<string>();
     for (const t of txs.data ?? []) {
@@ -140,7 +143,21 @@ function TransactionsPage() {
   const [importOpen, setImportOpen] = useState(false);
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const base = (txs.data ?? []).filter((t) => view === "all" || t.kind === view);
+    const minN = amountMin.trim() !== "" ? Number(amountMin.replace(",", ".")) : null;
+    const maxN = amountMax.trim() !== "" ? Number(amountMax.replace(",", ".")) : null;
+    let base = (txs.data ?? []).filter((t) => view === "all" || t.kind === view);
+    if (filterAccountIds.size > 0) {
+      base = base.filter((t) =>
+        filterAccountIds.has(t.account_id) ||
+        (t.loan_account_id && filterAccountIds.has(t.loan_account_id)) ||
+        (t.transfer_to_account_id && filterAccountIds.has(t.transfer_to_account_id))
+      );
+    }
+    if (filterCategoryIds.size > 0) {
+      base = base.filter((t) => t.category_id && filterCategoryIds.has(t.category_id));
+    }
+    if (minN != null && Number.isFinite(minN)) base = base.filter((t) => Number(t.amount) >= minN);
+    if (maxN != null && Number.isFinite(maxN)) base = base.filter((t) => Number(t.amount) <= maxN);
     if (!q) return base;
     return base.filter((t) => {
       const c = t.category_id ? catById[t.category_id] : null;
@@ -153,7 +170,7 @@ function TransactionsPage() {
         String(t.amount).includes(q)
       );
     });
-  }, [txs.data, view, search, catById, accountById]);
+  }, [txs.data, view, search, catById, accountById, filterAccountIds, filterCategoryIds, amountMin, amountMax]);
   const totals = useMemo(() => {
     let income = 0, expense = 0, transfers = 0;
     for (const t of filtered) {
@@ -239,48 +256,13 @@ function TransactionsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <div className="text-xs uppercase tracking-widest text-muted-foreground">Transaktionen</div>
-          <h1 className="text-3xl font-bold">{title}</h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <Select value={view} onValueChange={(v) => setView(v as ViewKind)}>
-            <SelectTrigger className="w-auto min-w-[7rem] gap-2"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Alle</SelectItem>
-              <SelectItem value="expense">Ausgaben</SelectItem>
-              <SelectItem value="income">Einnahmen</SelectItem>
-              <SelectItem value="transfer">Umbuchungen</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={filterAccount} onValueChange={setFilterAccount}>
-            <SelectTrigger className="w-auto min-w-[7rem] gap-2"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Alle Konten</SelectItem>
-              {(accounts.data ?? [])
-                .filter((a) => !a.archived && (usedAccountIds.has(a.id) || a.id === filterAccount))
-                .map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={filterCategory} onValueChange={setFilterCategory}>
-            <SelectTrigger className="w-auto min-w-[7rem] gap-2"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Alle Kategorien</SelectItem>
-              {(categories.data ?? [])
-                .filter((c) => view === "all" || c.kind === view)
-                .filter((c) => availableCategoryIds.has(c.id) || c.id === filterCategory)
-                .map((c) => <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
-            <DialogTrigger asChild>
-              <Button onClick={() => setEditing(null)}><Plus className="mr-2 h-4 w-4" />{newLabel}</Button>
-            </DialogTrigger>
-            <TransactionDialog key={editing?.id ?? "new"} tx={editing} defaultKind={dialogDefaultKind} onClose={() => { setOpen(false); setEditing(null); refresh(); }} />
-          </Dialog>
-        </div>
+      <div>
+        <div className="text-xs uppercase tracking-widest text-muted-foreground">Transaktionen</div>
+        <h1 className="text-3xl font-bold">{title}</h1>
       </div>
+
+      <TimeSeriesGraph items={filtered} fromISO={from} toISO={to} />
+
 
       <Card className="p-3">
         <div className="flex flex-wrap items-start justify-between gap-4">
@@ -401,6 +383,82 @@ function TransactionsPage() {
           onClose={() => { setImportOpen(false); refresh(); }}
         />
       </Dialog>
+
+      {/* Filter bar */}
+      <Card className="p-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={view} onValueChange={(v) => setView(v as ViewKind)}>
+            <SelectTrigger className="h-9 w-auto min-w-[8rem] gap-2"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Alle Typen</SelectItem>
+              <SelectItem value="income">Einnahme</SelectItem>
+              <SelectItem value="expense">Ausgabe</SelectItem>
+              <SelectItem value="transfer">Umbuchung</SelectItem>
+            </SelectContent>
+          </Select>
+          <MultiSelect
+            placeholder="Kategorie"
+            selected={filterCategoryIds}
+            onChange={setFilterCategoryIds}
+            options={(categories.data ?? [])
+              .filter((c) => availableCategoryIds.has(c.id) || filterCategoryIds.has(c.id))
+              .map((c) => ({ value: c.id, label: `${c.icon} ${c.name}` }))}
+          />
+          <MultiSelect
+            placeholder="Konto"
+            selected={filterAccountIds}
+            onChange={setFilterAccountIds}
+            options={(accounts.data ?? [])
+              .filter((a) => !a.archived && (usedAccountIds.has(a.id) || filterAccountIds.has(a.id)))
+              .map((a) => ({ value: a.id, label: a.name }))}
+          />
+          <div className="flex items-center gap-1">
+            <Input
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              placeholder="Betrag von"
+              value={amountMin}
+              onChange={(e) => setAmountMin(e.target.value)}
+              className="h-9 w-28"
+            />
+            <span className="text-xs text-muted-foreground">–</span>
+            <Input
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              placeholder="bis"
+              value={amountMax}
+              onChange={(e) => setAmountMax(e.target.value)}
+              className="h-9 w-24"
+            />
+          </div>
+          {(filterCategoryIds.size > 0 || filterAccountIds.size > 0 || amountMin || amountMax || view !== "all") && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setFilterCategoryIds(new Set());
+                setFilterAccountIds(new Set());
+                setAmountMin("");
+                setAmountMax("");
+                setView("all");
+              }}
+            >
+              <X className="mr-1 h-4 w-4" />Filter zurücksetzen
+            </Button>
+          )}
+          <div className="ml-auto">
+            <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
+              <DialogTrigger asChild>
+                <Button onClick={() => setEditing(null)}><Plus className="mr-2 h-4 w-4" />{newLabel}</Button>
+              </DialogTrigger>
+              <TransactionDialog key={editing?.id ?? "new"} tx={editing} defaultKind={dialogDefaultKind} onClose={() => { setOpen(false); setEditing(null); refresh(); }} />
+            </Dialog>
+          </div>
+        </div>
+      </Card>
+
 
       {selected.size > 0 && (
         <Card className="sticky top-2 z-20 flex flex-wrap items-center justify-between gap-3 border-primary/40 bg-primary/5 p-3">
@@ -727,7 +785,7 @@ export function TransactionDialog({ tx, defaultKind, defaultAccountId, defaultLo
   const [busy, setBusy] = useState(false);
 
   const isTransfer = kind === "transfer";
-  const filteredCats = (categories.data ?? []).filter((c) => c.kind === kind);
+  const filteredCats = (categories.data ?? []);
   const bankAccounts = (accounts.data ?? []).filter((a) => a.type === "checking" || a.type === "savings" || a.type === "clearing" || a.type === "credit_card");
   const loanAccounts = (accounts.data ?? []).filter((a) => a.type === "loan" || a.type === "darlehen");
   // For transfers, allow ANY account (bank, clearing, loan, card) on both sides
@@ -916,3 +974,41 @@ function exportAllCsv(
   document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(url);
 }
+
+function TimeSeriesGraph({ items, fromISO, toISO }: { items: Transaction[]; fromISO?: string; toISO?: string }) {
+  const data = useMemo(() => {
+    if (items.length === 0) return [];
+    const sorted = [...items].map((t) => t.occurred_on).sort();
+    const from = fromISO ?? sorted[0];
+    const to = toISO ?? sorted[sorted.length - 1];
+    const bucket = pickBucket(from, to);
+    return groupByBucket(items, bucket, (t) => ({
+      income: t.kind === "income" ? Number(t.amount) : 0,
+      expense: t.kind === "expense" ? Number(t.amount) : 0,
+    }));
+  }, [items, fromISO, toISO]);
+
+  return (
+    <Card className="p-4">
+      <div className="mb-2 text-xs uppercase tracking-widest text-muted-foreground">Zeitverlauf</div>
+      <div className="h-64 w-full">
+        {data.length === 0 ? (
+          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Keine Daten im gewählten Zeitraum</div>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+              <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v) => fmtEUR(Number(v))} width={80} />
+              <Tooltip formatter={(v: number) => fmtEUR(Number(v))} contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+              <Bar dataKey="income" name="Einnahmen" fill="#10b981" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="expense" name="Ausgaben" fill="#ef4444" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+    </Card>
+  );
+}
+
