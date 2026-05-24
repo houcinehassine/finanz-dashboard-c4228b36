@@ -974,3 +974,41 @@ function exportAllCsv(
   document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(url);
 }
+
+function TimeSeriesGraph({ items, fromISO, toISO }: { items: Transaction[]; fromISO?: string; toISO?: string }) {
+  const data = useMemo(() => {
+    if (items.length === 0) return [];
+    const sorted = [...items].map((t) => t.occurred_on).sort();
+    const from = fromISO ?? sorted[0];
+    const to = toISO ?? sorted[sorted.length - 1];
+    const bucket = pickBucket(from, to);
+    return groupByBucket(items, bucket, (t) => ({
+      income: t.kind === "income" ? Number(t.amount) : 0,
+      expense: t.kind === "expense" ? Number(t.amount) : 0,
+    }));
+  }, [items, fromISO, toISO]);
+
+  return (
+    <Card className="p-4">
+      <div className="mb-2 text-xs uppercase tracking-widest text-muted-foreground">Zeitverlauf</div>
+      <div className="h-64 w-full">
+        {data.length === 0 ? (
+          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Keine Daten im gewählten Zeitraum</div>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+              <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v) => fmtEUR(Number(v))} width={80} />
+              <Tooltip formatter={(v: number) => fmtEUR(Number(v))} contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+              <Bar dataKey="income" name="Einnahmen" fill="#10b981" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="expense" name="Ausgaben" fill="#ef4444" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+    </Card>
+  );
+}
+
