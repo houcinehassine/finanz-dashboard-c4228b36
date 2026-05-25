@@ -129,18 +129,29 @@ export function CategoryKeywordsManager() {
                     {c?.icon} {c?.name ?? "Unbekannt"}
                   </div>
                   <div className="flex flex-wrap gap-1.5">
-                    {(list as any[]).map((k) => (
-                      <Badge key={k.id} variant="secondary" className="gap-1 pr-1">
-                        {k.keyword}
-                        <button
-                          onClick={() => remove(k.id)}
-                          className="ml-1 rounded-sm p-0.5 hover:bg-destructive/20"
-                          aria-label="Entfernen"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      </Badge>
-                    ))}
+                    {(list as any[]).map((k) => {
+                      const src = (k.source ?? "user") as "user" | "learned" | "default";
+                      const tone = src === "learned"
+                        ? "border-primary/40 bg-primary/10 text-primary"
+                        : src === "default"
+                          ? "border-muted-foreground/30 bg-muted text-muted-foreground"
+                          : "";
+                      return (
+                        <Badge key={k.id} variant="secondary" className={`gap-1 pr-1 ${tone}`} title={
+                          src === "learned" ? "Automatisch gelernt" : src === "default" ? "Standardliste" : "Manuell"
+                        }>
+                          {src === "learned" && <Sparkles className="h-3 w-3" />}
+                          {k.keyword}
+                          <button
+                            onClick={() => remove(k.id)}
+                            className="ml-1 rounded-sm p-0.5 hover:bg-destructive/20"
+                            aria-label="Entfernen"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      );
+                    })}
                   </div>
                 </div>
               );
