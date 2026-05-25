@@ -33,11 +33,11 @@ export function CategoryKeywordsManager() {
   }, [cats.data]);
 
   const grouped = useMemo(() => {
-    const g = new Map<string, typeof kws.data extends Array<infer T> ? T[] : never>();
+    const g = new Map<string, any[]>();
     for (const k of (kws.data ?? [])) {
-      const arr = (g.get(k.category_id) ?? []) as any[];
+      const arr = g.get(k.category_id) ?? [];
       arr.push(k);
-      g.set(k.category_id, arr as any);
+      g.set(k.category_id, arr);
     }
     return g;
   }, [kws.data]);
