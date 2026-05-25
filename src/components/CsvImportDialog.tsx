@@ -7,6 +7,7 @@ import { Upload, ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAccounts, useCategories, type Account, type Category } from "@/lib/queries";
 import { useImportRules, applyRules } from "@/lib/rules";
+import { useCategoryKeywords, suggestCategory } from "@/lib/category-suggest";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
 
@@ -94,6 +95,7 @@ export function CsvImportDialog({
   const accounts = useAccounts();
   const cats = useCategories();
   const rules = useImportRules();
+  const keywords = useCategoryKeywords();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [rows, setRows] = useState<string[][]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
@@ -234,6 +236,11 @@ export function CsvImportDialog({
       row.category_id = after.category_id;
       row.kind = after.kind ?? row.kind;
       row.loan_account_id = after.loan_account_id ?? null;
+      // Keyword fallback: if still no category, try the keyword list.
+      if (!row.category_id) {
+        const suggested = suggestCategory(row.note, row.purpose, keywords.data ?? []);
+        if (suggested) row.category_id = suggested;
+      }
       // Transfer rows would need transfer_to_account_id; we never set it via CSV.
       if (row.kind === "transfer") row.kind = "expense";
       return row;
