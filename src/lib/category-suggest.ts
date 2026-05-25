@@ -3,11 +3,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import type { Category } from "@/lib/queries";
 
+export type KeywordSource = "user" | "learned" | "default";
+
 export type CategoryKeyword = {
   id: string;
   user_id: string;
   category_id: string;
   keyword: string;
+  source?: KeywordSource;
 };
 
 // Default keyword seeds mapped by category NAME (matched case-insensitively
@@ -45,7 +48,8 @@ export function useCategoryKeywords() {
 
 /**
  * Suggest a category_id based on description + purpose using a keyword list.
- * Returns null if no match. Longer keywords win on ties (more specific match).
+ * Order of preference: learned > user > default. Within a source, longer
+ * keywords win (more specific match).
  */
 export function suggestCategory(
   description: string | null | undefined,
@@ -54,13 +58,15 @@ export function suggestCategory(
 ): string | null {
   const hay = `${description ?? ""} ${purpose ?? ""}`.toLowerCase();
   if (!hay.trim()) return null;
-  let best: { catId: string; len: number } | null = null;
+  const sourceRank = (s?: KeywordSource) => (s === "learned" ? 3 : s === "user" ? 2 : 1);
+  let best: { catId: string; len: number; rank: number } | null = null;
   for (const kw of keywords) {
     const needle = kw.keyword.trim().toLowerCase();
     if (!needle) continue;
     if (hay.includes(needle)) {
-      if (!best || needle.length > best.len) {
-        best = { catId: kw.category_id, len: needle.length };
+      const rank = sourceRank(kw.source);
+      if (!best || rank > best.rank || (rank === best.rank && needle.length > best.len)) {
+        best = { catId: kw.category_id, len: needle.length, rank };
       }
     }
   }
@@ -69,15 +75,14 @@ export function suggestCategory(
 
 /**
  * Build default keyword rows by matching DEFAULT_KEYWORDS names to existing categories.
- * Returns rows ready to insert (without id / created_at).
  */
 export function buildDefaultKeywordRows(
   userId: string,
   categories: Category[],
-): Array<{ user_id: string; category_id: string; keyword: string }> {
+): Array<{ user_id: string; category_id: string; keyword: string; source: KeywordSource }> {
   const byName = new Map<string, Category>();
   for (const c of categories) byName.set(c.name.toLowerCase(), c);
-  const rows: Array<{ user_id: string; category_id: string; keyword: string }> = [];
+  const rows: Array<{ user_id: string; category_id: string; keyword: string; source: KeywordSource }> = [];
   const seen = new Set<string>();
   for (const [name, kws] of Object.entries(DEFAULT_KEYWORDS)) {
     const cat = byName.get(name.toLowerCase());
@@ -86,8 +91,22 @@ export function buildDefaultKeywordRows(
       const key = `${cat.id}|${kw.toLowerCase()}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      rows.push({ user_id: userId, category_id: cat.id, keyword: kw });
+      rows.push({ user_id: userId, category_id: cat.id, keyword: kw, source: "default" });
     }
   }
   return rows;
+}
+
+/**
+ * Derive a usable keyword from a transaction description/purpose.
+ * Picks the longest alphabetic token (>=3 chars). Fallback: trimmed full text.
+ */
+export function deriveKeyword(description?: string | null, purpose?: string | null): string | null {
+  const base = (description ?? purpose ?? "").trim();
+  if (!base) return null;
+  const tokens = base.toLowerCase().match(/[a-zäöüß][a-zäöüß0-9&.\-]{2,}/gi) ?? [];
+  if (tokens.length === 0) return base.slice(0, 60).toLowerCase();
+  // longest token wins (more distinctive)
+  tokens.sort((a, b) => b.length - a.length);
+  return tokens[0];
 }
