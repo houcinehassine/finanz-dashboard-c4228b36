@@ -108,5 +108,5 @@ export function deriveKeyword(description?: string | null, purpose?: string | nu
   if (tokens.length === 0) return base.slice(0, 60).toLowerCase();
   // longest token wins (more distinctive)
   tokens.sort((a, b) => b.length - a.length);
-  return tokens[0];
+  return tokens[0] ?? null;
 }
