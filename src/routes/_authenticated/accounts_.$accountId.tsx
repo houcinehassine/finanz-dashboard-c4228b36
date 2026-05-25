@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { pickBucket, bucketOf } from "@/lib/aggregate";
 import { TransactionDialog, BulkEditDialog } from "./transactions";
 import { CsvImportDialog } from "@/components/CsvImportDialog";
+import { LearnKeywordDialog, type LearnPrompt } from "@/components/LearnKeywordDialog";
 
 export const Route = createFileRoute("/_authenticated/accounts_/$accountId")({
   component: AccountDetailPage,
@@ -38,6 +39,7 @@ function AccountDetailPage() {
   );
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
+  const [learnPrompt, setLearnPrompt] = useState<LearnPrompt | null>(null);
   const [search, setSearch] = useState("");
   const [importOpen, setImportOpen] = useState(false);
   const accountsAll = useAccounts();
@@ -461,8 +463,11 @@ function AccountDetailPage() {
           defaultAccountId={isLoanLike ? undefined : accountId}
           defaultLoanAccountId={isLoanLike ? accountId : undefined}
           onClose={() => { setDialogOpen(false); setEditingTx(null); refresh(); }}
+          onLearnPrompt={setLearnPrompt}
         />
       </Dialog>
+
+      <LearnKeywordDialog prompt={learnPrompt} onClose={() => setLearnPrompt(null)} />
 
       <Dialog open={importOpen} onOpenChange={setImportOpen}>
         <CsvImportDialog
