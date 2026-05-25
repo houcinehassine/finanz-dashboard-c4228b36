@@ -16,12 +16,13 @@ import { useAccounts, useCategories, useTransactions, type Transaction } from "@
 import { fmtEUR, fmtDate } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { Plus, Trash2, Pencil, X, Copy, CalendarRange, Search, Download, Upload } from "lucide-react";
+import { Plus, Trash2, Pencil, X, Copy, CalendarRange, Search, Download, Upload, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { CsvImportDialog } from "@/components/CsvImportDialog";
 import { MultiSelect } from "@/components/MultiSelect";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
 import { pickBucket, groupByBucket } from "@/lib/aggregate";
+import { useCategoryKeywords, suggestCategory } from "@/lib/category-suggest";
 
 type RelRange = { amount: number; unit: "month" | "year" | "all" };
 const PRESETS: { label: string; value: RelRange }[] = [
@@ -773,6 +774,7 @@ export function TransactionDialog({ tx, defaultKind, defaultAccountId, defaultLo
   const { user } = useAuth();
   const accounts = useAccounts();
   const categories = useCategories();
+  const keywords = useCategoryKeywords();
   const [kind, setKind] = useState<Transaction["kind"]>(tx?.kind ?? defaultKind ?? "expense");
   const [accountId, setAccountId] = useState<string>(tx?.account_id ?? defaultAccountId ?? "");
   const [transferToId, setTransferToId] = useState<string>(tx?.transfer_to_account_id ?? "");
@@ -884,7 +886,25 @@ export function TransactionDialog({ tx, defaultKind, defaultAccountId, defaultLo
         )}
         {!isTransfer && (
           <div>
-            <Label>Kategorie</Label>
+            <div className="flex items-center justify-between">
+              <Label>Kategorie</Label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => {
+                  const id = suggestCategory(note, purpose, keywords.data ?? []);
+                  if (!id) { toast.info("Kein passendes Keyword gefunden"); return; }
+                  setCategoryId(id);
+                  const c = filteredCats.find((x) => x.id === id);
+                  toast.success(`Vorschlag: ${c?.icon ?? ""} ${c?.name ?? ""}`);
+                }}
+                disabled={!note && !purpose}
+              >
+                <Sparkles className="mr-1 h-3 w-3" />Vorschlagen
+              </Button>
+            </div>
             <Select value={categoryId} onValueChange={setCategoryId}>
               <SelectTrigger><SelectValue placeholder="Kategorie wählen" /></SelectTrigger>
               <SelectContent>
