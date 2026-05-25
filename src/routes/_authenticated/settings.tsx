@@ -9,9 +9,10 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/integrations/supabase/client";
-import { LogOut, User, Globe, FileUp, ListChecks, Tags, Sun, Moon, Trash2 } from "lucide-react";
+import { LogOut, User, Globe, FileUp, ListChecks, Tags, Sun, Moon, Trash2, Sparkles } from "lucide-react";
 import { CategoriesManager } from "@/components/CategoriesManager";
 import { RulesManager } from "@/components/RulesManager";
+import { CategoryKeywordsManager } from "@/components/CategoryKeywordsManager";
 import { usePreferences } from "@/lib/preferences";
 import { deleteMyAccount } from "@/lib/account.functions";
 import { toast } from "sonner";
@@ -54,11 +55,12 @@ function SettingsPage() {
 
       <Tabs value={tab} onValueChange={setTab}>
         <Card className="p-1">
-          <TabsList className="grid w-full grid-cols-2 gap-1 bg-transparent sm:grid-cols-5">
+          <TabsList className="grid w-full grid-cols-2 gap-1 bg-transparent sm:grid-cols-6">
             <TabsTrigger value="profile"><User className="mr-2 h-4 w-4" />Profil</TabsTrigger>
             <TabsTrigger value="language"><Globe className="mr-2 h-4 w-4" />Sprache</TabsTrigger>
             <TabsTrigger value="csv"><FileUp className="mr-2 h-4 w-4" />CSV-Import</TabsTrigger>
             <TabsTrigger value="rules"><ListChecks className="mr-2 h-4 w-4" />Regeln</TabsTrigger>
+            <TabsTrigger value="keywords"><Sparkles className="mr-2 h-4 w-4" />Keywords</TabsTrigger>
             <TabsTrigger value="categories"><Tags className="mr-2 h-4 w-4" />Kategorien</TabsTrigger>
           </TabsList>
         </Card>
@@ -124,6 +126,10 @@ function SettingsPage() {
 
         <TabsContent value="rules" className="mt-4">
           <RulesManager />
+        </TabsContent>
+
+        <TabsContent value="keywords" className="mt-4">
+          <CategoryKeywordsManager />
         </TabsContent>
 
         <TabsContent value="categories" className="mt-4">
