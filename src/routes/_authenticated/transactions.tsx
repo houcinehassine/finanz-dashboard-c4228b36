@@ -23,6 +23,7 @@ import { MultiSelect } from "@/components/MultiSelect";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
 import { pickBucket, groupByBucket } from "@/lib/aggregate";
 import { useCategoryKeywords, suggestCategory } from "@/lib/category-suggest";
+import { LearnKeywordDialog, type LearnPrompt } from "@/components/LearnKeywordDialog";
 
 type RelRange = { amount: number; unit: "month" | "year" | "all" };
 const PRESETS: { label: string; value: RelRange }[] = [
@@ -217,6 +218,7 @@ function TransactionsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [learnPrompt, setLearnPrompt] = useState<LearnPrompt | null>(null);
   const filteredIds = useMemo(() => filtered.map((t) => t.id), [filtered]);
   useEffect(() => {
     setSelected((prev) => {
@@ -454,7 +456,7 @@ function TransactionsPage() {
               <DialogTrigger asChild>
                 <Button onClick={() => setEditing(null)}><Plus className="mr-2 h-4 w-4" />{newLabel}</Button>
               </DialogTrigger>
-              <TransactionDialog key={editing?.id ?? "new"} tx={editing} defaultKind={dialogDefaultKind} onClose={() => { setOpen(false); setEditing(null); refresh(); }} />
+              <TransactionDialog key={editing?.id ?? "new"} tx={editing} defaultKind={dialogDefaultKind} onClose={() => { setOpen(false); setEditing(null); refresh(); }} onLearnPrompt={setLearnPrompt} />
             </Dialog>
           </div>
         </div>
@@ -610,6 +612,8 @@ function TransactionsPage() {
         ids={selectedIds}
         onDone={() => { clearSelection(); refresh(); }}
       />
+
+      <LearnKeywordDialog prompt={learnPrompt} onClose={() => setLearnPrompt(null)} />
     </div>
   );
 }
