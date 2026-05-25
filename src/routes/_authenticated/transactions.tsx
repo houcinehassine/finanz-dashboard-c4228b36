@@ -770,11 +770,12 @@ export function BulkEditDialog({ open, onOpenChange, ids, onDone, fields }: { op
   );
 }
 
-export function TransactionDialog({ tx, defaultKind, defaultAccountId, defaultLoanAccountId, onClose }: { tx: Transaction | null; defaultKind?: Transaction["kind"]; defaultAccountId?: string; defaultLoanAccountId?: string; onClose: () => void }) {
+export function TransactionDialog({ tx, defaultKind, defaultAccountId, defaultLoanAccountId, onClose, onLearnPrompt }: { tx: Transaction | null; defaultKind?: Transaction["kind"]; defaultAccountId?: string; defaultLoanAccountId?: string; onClose: () => void; onLearnPrompt?: (p: { description: string | null; purpose: string | null; categoryId: string; previousCategoryId: string | null }) => void }) {
   const { user } = useAuth();
   const accounts = useAccounts();
   const categories = useCategories();
   const keywords = useCategoryKeywords();
+  const initialCategoryId = tx?.category_id ?? "";
   const [kind, setKind] = useState<Transaction["kind"]>(tx?.kind ?? defaultKind ?? "expense");
   const [accountId, setAccountId] = useState<string>(tx?.account_id ?? defaultAccountId ?? "");
   const [transferToId, setTransferToId] = useState<string>(tx?.transfer_to_account_id ?? "");
@@ -827,8 +828,18 @@ export function TransactionDialog({ tx, defaultKind, defaultAccountId, defaultLo
       ? await supabase.from("transactions").update(payload).eq("id", tx.id)
       : await supabase.from("transactions").insert(payload);
     setBusy(false);
-    if (error) toast.error(error.message);
-    else { toast.success("Gespeichert"); onClose(); }
+    if (error) { toast.error(error.message); return; }
+    toast.success("Gespeichert");
+    // Learning prompt: ask whether to remember the description→category mapping
+    if (!isTransfer && categoryId && categoryId !== initialCategoryId && (note?.trim() || purpose?.trim()) && onLearnPrompt) {
+      onLearnPrompt({
+        description: note || null,
+        purpose: purpose || null,
+        categoryId,
+        previousCategoryId: initialCategoryId || null,
+      });
+    }
+    onClose();
   };
 
   return (
